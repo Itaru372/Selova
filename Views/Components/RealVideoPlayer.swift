@@ -10,7 +10,7 @@ struct RealVideoPlayer: View {
     var video: VideoItem
     var sharedPlayer: AVPlayer?
     var onPlaybackTimeUpdate: ((Double) -> Void)?
-    
+
     var body: some View {
         if video.type == .local {
             let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -39,25 +39,68 @@ struct RealVideoPlayer: View {
             .background(Color.black)
         }
     }
-    
+
     private func youtubeEmbedURL(from urlString: String) -> URL? {
-        var videoId = ""
-        if let url = URL(string: urlString) {
-            if url.host?.contains("youtu.be") == true {
-                videoId = url.lastPathComponent
-            } else if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-                      let queryItems = components.queryItems,
-                      let id = queryItems.first(where: { $0.name == "v" })?.value {
-                videoId = id
+        guard let videoId = youtubeVideoID(from: urlString) else { return nil }
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "www.youtube-nocookie.com"
+        components.path = "/embed/\(videoId)"
+        components.queryItems = [
+            URLQueryItem(name: "playsinline", value: "1"),
+            URLQueryItem(name: "autoplay", value: "1"),
+            URLQueryItem(name: "loop", value: "1"),
+            URLQueryItem(name: "playlist", value: videoId),
+            URLQueryItem(name: "rel", value: "0"),
+            URLQueryItem(name: "modestbranding", value: "1")
+        ]
+        return components.url
+    }
+
+    private func youtubeVideoID(from urlString: String) -> String? {
+        let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if !trimmed.contains("/") && !trimmed.contains("?") && trimmed.count >= 6 {
+            return trimmed
+        }
+
+        let normalized = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
+        guard let url = URL(string: normalized),
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return nil
+        }
+
+        if let id = components.queryItems?.first(where: { $0.name == "v" })?.value,
+           !id.isEmpty {
+            return sanitizedVideoID(id)
+        }
+
+        let host = (components.host ?? url.host ?? "").lowercased()
+        let pathParts = url.pathComponents.filter { $0 != "/" }
+
+        if host.contains("youtu.be") {
+            return pathParts.first.flatMap(sanitizedVideoID)
+        }
+
+        for marker in ["shorts", "embed", "live", "v"] {
+            if let index = pathParts.firstIndex(of: marker),
+               pathParts.indices.contains(index + 1) {
+                return sanitizedVideoID(pathParts[index + 1])
             }
         }
-        
-        if !videoId.isEmpty {
-            return URL(string: "https://www.youtube.com/embed/\(videoId)?playsinline=1&autoplay=1&loop=1&playlist=\(videoId)")
-        }
+
         return nil
     }
-    
+
+    private func sanitizedVideoID(_ value: String) -> String? {
+        let id = value
+            .split(separator: "?").first?
+            .split(separator: "&").first
+            .map(String.init) ?? value
+        return id.isEmpty ? nil : id
+    }
+
     private func vimeoEmbedURL(from urlString: String) -> URL? {
         if let url = URL(string: urlString) {
             let videoId = url.lastPathComponent
@@ -73,31 +116,31 @@ struct LocalVideoPlayer: UIViewControllerRepresentable {
     var player: AVPlayer?
     var managesPlayback: Bool = true
     var onPlaybackTimeUpdate: ((Double) -> Void)?
-    
+
     class Coordinator: NSObject {
         var parent: LocalVideoPlayer
-        
+
         init(_ parent: LocalVideoPlayer) {
             self.parent = parent
         }
     }
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-    
+
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let controller = AVPlayerViewController()
         let activePlayer = player ?? AVPlayer(url: url)
         controller.player = activePlayer
         controller.showsPlaybackControls = true
         controller.videoGravity = .resizeAspect
-        
-        if managesPlayback, let lastTime = video.lastPlaybackTime {
+
+        if managesPlayback, let lastTime = Self.validPlaybackTime(video.lastPlaybackTime) {
             let cmTime = CMTime(seconds: lastTime, preferredTimescale: 600)
             activePlayer.seek(to: cmTime)
         }
-        
+
         if managesPlayback {
             NotificationCenter.default.addObserver(
                 forName: .AVPlayerItemDidPlayToEndTime,
@@ -111,41 +154,45 @@ struct LocalVideoPlayer: UIViewControllerRepresentable {
         }
         return controller
     }
-    
+
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
     }
-    
+
     static func dismantleUIViewController(_ uiViewController: AVPlayerViewController, coordinator: Coordinator) {
         guard coordinator.parent.managesPlayback else { return }
         if let player = uiViewController.player {
-            let currentTime = player.currentTime().seconds
-            if !currentTime.isNaN {
+            if let currentTime = Self.validPlaybackTime(player.currentTime().seconds) {
                 coordinator.parent.onPlaybackTimeUpdate?(currentTime)
             }
             player.pause()
         }
     }
+
+    private static func validPlaybackTime(_ seconds: Double?) -> Double? {
+        guard let seconds, seconds.isFinite, seconds >= 0 else { return nil }
+        return seconds
+    }
 }
 
 struct WebViewPlayer: UIViewRepresentable {
     var url: URL
-    
+
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
-        
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.scrollView.isScrollEnabled = false
         webView.backgroundColor = .black
         webView.isOpaque = false
-        
+
         let request = URLRequest(url: url)
         webView.load(request)
-        
+
         return webView
     }
-    
+
     func updateUIView(_ uiView: WKWebView, context: Context) {
     }
 }
