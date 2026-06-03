@@ -46,51 +46,40 @@ struct AddVideoSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Video Type")) {
-                    videoTypeButton(
-                        type: .local,
-                        title: "ローカル",
-                        subtitle: "写真またはファイルから追加",
-                        systemImage: "folder.fill"
-                    )
-                    videoTypeButton(
-                        type: .youtube,
-                        title: "YouTube",
-                        subtitle: "URLから追加",
-                        systemImage: "play.rectangle.fill"
-                    )
-                    videoTypeButton(
-                        type: .vimeo,
-                        title: "Vimeo",
-                        subtitle: "URLから追加",
-                        systemImage: "video.fill"
-                    )
+                Section(header: Text("種類")) {
+                    Picker("ソース", selection: $selectedType) {
+                        Label("ローカル", systemImage: "folder.fill")
+                            .tag(VideoType.local)
+                        Label("YouTube", systemImage: "play.rectangle.fill")
+                            .tag(VideoType.youtube)
+                        Label("Vimeo", systemImage: "video.fill")
+                            .tag(VideoType.vimeo)
+                    }
+                    .pickerStyle(.menu)
                 }
 
-                Section(header: Text("Video Details")) {
+                Section(header: Text("動画")) {
                     if selectedType == .local {
-                        HStack(spacing: 12) {
-                            PhotosPicker(selection: $selectedPhotoItem, matching: .videos) {
-                                Label("写真から選択", systemImage: "photo.on.rectangle.angled")
-                                    .frame(maxWidth: .infinity)
+                        if urlString.isEmpty {
+                            HStack(spacing: 12) {
+                                PhotosPicker(selection: $selectedPhotoItem, matching: .videos) {
+                                    Label("写真", systemImage: "photo.on.rectangle.angled")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                                
+                                Button {
+                                    showingFileImporter = true
+                                } label: {
+                                    Label("ファイル", systemImage: "doc.fill")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
                             }
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                showingFileImporter = true
-                            } label: {
-                                Label("ファイルから選択", systemImage: "doc.fill")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
+                        } else {
+                            selectedLocalVideoRow
                         }
-
-                        if !urlString.isEmpty {
-                            Label(urlString, systemImage: "checkmark.circle.fill")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
+                        
                         if let localImportMessage {
                             Label(localImportMessage, systemImage: "exclamationmark.triangle.fill")
                                 .font(.caption)
@@ -100,15 +89,26 @@ struct AddVideoSheet: View {
                         HStack {
                             TextField(selectedType == .youtube ? "YouTube URL" : "Vimeo URL", text: $urlString)
                                 .keyboardType(.URL)
-                                .autocapitalization(.none)
-
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                            
+                            if !urlString.isEmpty {
+                                Button {
+                                    clearRemoteVideo()
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            
                             Button {
                                 Task { await fetchTitle() }
                             } label: {
                                 if isFetchingTitle {
                                     ProgressView().controlSize(.small)
                                 } else {
-                                    Text("Fetch Title")
+                                    Text("取得")
                                         .font(.caption)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
@@ -122,28 +122,28 @@ struct AddVideoSheet: View {
                         }
                     }
 
-                    TextField("Title", text: $title)
+                    TextField("タイトル", text: $title)
                 }
 
-                Section(header: Text("Save to Folder")) {
-                    Picker("Folder", selection: $selectedFolder) {
-                        Text("No Folder").tag(FolderItem?(nil))
+                Section(header: Text("保存先")) {
+                    Picker("フォルダ", selection: $selectedFolder) {
+                        Text("指定なし").tag(FolderItem?(nil))
                         ForEach(allFolders) { folder in
                             Text(folder.name).tag(FolderItem?(folder))
                         }
                     }
                 }
             }
-            .navigationTitle("Add Video")
+            .navigationTitle("動画を追加")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("キャンセル") {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button("追加") {
                         addVideo()
                     }
                     .disabled(title.isEmpty || urlString.isEmpty)
@@ -186,35 +186,75 @@ struct AddVideoSheet: View {
             }
         }
     }
-
-    private func videoTypeButton(type: VideoType, title: String, subtitle: String, systemImage: String) -> some View {
-        Button {
-            selectedType = type
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
+    
+    private var selectedLocalVideoRow: some View {
+        HStack(spacing: 12) {
+            thumbnailPreview
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title.isEmpty ? "選択済みの動画" : title)
                     .font(.body)
-                    .foregroundStyle(.blue)
-                    .frame(width: 28)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .foregroundStyle(.primary)
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if selectedType == type {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.blue)
-                }
+                    .lineLimit(1)
+                Text(formattedLocalVideoDetail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
-            .contentShape(Rectangle())
+            
+            Spacer()
+            
+            Button {
+                clearLocalVideo()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+    }
+    
+    private var thumbnailPreview: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.secondary.opacity(0.14))
+            
+            if let thumbnailData,
+               let image = UIImage(data: thumbnailData) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "play.rectangle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 54, height: 36)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+    
+    private var formattedLocalVideoDetail: String {
+        guard duration > 0 else { return urlString }
+        let minutes = Int(duration) / 60
+        let seconds = Int(duration) % 60
+        return "\(minutes):\(String(format: "%02d", seconds))"
+    }
+    
+    private func clearLocalVideo() {
+        urlString = ""
+        title = ""
+        duration = 0
+        thumbnailData = nil
+        localImportMessage = nil
+        selectedPhotoItem = nil
+    }
+    
+    private func clearRemoteVideo() {
+        urlString = ""
+        title = ""
+        thumbnailData = nil
     }
 
     private func fetchTitle() async {
