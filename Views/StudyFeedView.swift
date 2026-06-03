@@ -18,6 +18,8 @@ struct StudyFeedView: View {
     @State private var playbackError: String?
     @State private var swipeOffset: CGFloat = 0
     @State private var virtualPage = 0
+    @State private var isPaging = false
+    @State private var isDismissing = false
 
     init(video: VideoItem) {
         self.video = video
@@ -31,9 +33,13 @@ struct StudyFeedView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                Color.black.ignoresSafeArea()
+                studyFeedBackground.ignoresSafeArea()
                 videoPage(in: proxy.size)
             }
+            .scaleEffect(isDismissing ? 0.965 : 1.0)
+            .offset(y: isDismissing ? proxy.size.height * 0.045 : 0)
+            .opacity(isDismissing ? 0.0 : 1.0)
+            .allowsHitTesting(!isDismissing)
             .contentShape(Rectangle())
             .simultaneousGesture(feedSwipeGesture(in: proxy.size))
             .toolbar(.hidden, for: .tabBar)
@@ -52,35 +58,140 @@ struct StudyFeedView: View {
 
     private func videoPage(in size: CGSize) -> some View {
         ZStack {
-            playerContainer(gravity: .resizeAspect)
+            feedPageSurface(in: size) {
+                thumbnailPage(in: size)
+            }
                 .frame(width: size.width, height: size.height)
-                .clipped()
+                .offset(y: -size.height + swipeOffset)
+
+            feedPageSurface(in: size) {
+                thumbnailPage(in: size)
+            }
+                .frame(width: size.width, height: size.height)
+                .offset(y: size.height + swipeOffset)
+
+            feedPageSurface(in: size) {
+                playerContainer(gravity: .resizeAspect)
+            }
+                .frame(width: size.width, height: size.height)
                 .offset(y: swipeOffset)
+                .zIndex(1)
+
+            pageEdgeIndicator(in: size)
+                .opacity(abs(swipeOffset) > 12 ? 1 : 0.45)
+                .animation(.smooth(duration: 0.18), value: swipeOffset)
+                .zIndex(2)
 
             if let playbackError {
                 playbackErrorView(playbackError)
                     .padding(.horizontal, 28)
+                    .zIndex(2)
             }
 
             backButton
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .zIndex(3)
         }
         .frame(width: size.width, height: size.height)
-        .background(Color.black)
+    }
+
+    private var studyFeedBackground: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.04, green: 0.05, blue: 0.075),
+                    Color(red: 0.075, green: 0.09, blue: 0.13),
+                    Color(red: 0.035, green: 0.04, blue: 0.058)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            LinearGradient(
+                colors: [
+                    TikTokTheme.pink.opacity(0.22),
+                    .clear,
+                    TikTokTheme.readableBlue.opacity(0.18)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .blendMode(.screen)
+        }
+    }
+
+    private func feedPageSurface<Content: View>(
+        in size: CGSize,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let horizontalInset: CGFloat = size.width > 430 ? 16 : 8
+        let verticalInset: CGFloat = size.height > 700 ? 12 : 8
+
+        return ZStack {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.black.opacity(0.82))
+
+            content()
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+        .padding(.horizontal, horizontalInset)
+        .padding(.vertical, verticalInset)
+        .overlay(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.32),
+                            TikTokTheme.readableBlue.opacity(0.38),
+                            TikTokTheme.pink.opacity(0.26)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+                .padding(.horizontal, horizontalInset)
+                .padding(.vertical, verticalInset)
+        )
+        .shadow(color: Color.black.opacity(0.36), radius: 24, x: 0, y: 14)
+    }
+
+    private func pageEdgeIndicator(in size: CGSize) -> some View {
+        VStack(spacing: 0) {
+            edgeCapsule
+                .offset(y: 20)
+            Spacer()
+            edgeCapsule
+                .offset(y: -20)
+        }
+        .frame(width: size.width, height: size.height)
+        .allowsHitTesting(false)
+    }
+
+    private var edgeCapsule: some View {
+        Capsule()
+            .fill(Color.white.opacity(0.76))
+            .frame(width: 46, height: 4)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+        .background(Color.black.opacity(0.32), in: Capsule())
+        .overlay(
+            Capsule()
+                .stroke(Color.white.opacity(0.16), lineWidth: 1)
+        )
     }
 
     private func feedSwipeGesture(in size: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 28)
             .onChanged { value in
-                guard video.type == .local else { return }
+                guard size.height >= size.width else { return }
+                guard !isPaging else { return }
                 guard abs(value.translation.height) > abs(value.translation.width) else { return }
-                swipeOffset = value.translation.height * 0.08
+                swipeOffset = clamped(value.translation.height, min: -size.height, max: size.height)
             }
             .onEnded { value in
-                guard video.type == .local else {
-                    swipeOffset = 0
-                    return
-                }
+                guard size.height >= size.width else { return }
+                guard !isPaging else { return }
                 guard abs(value.translation.height) > abs(value.translation.width) else {
                     withAnimation(.smooth(duration: 0.2)) {
                         swipeOffset = 0
@@ -88,17 +199,85 @@ struct StudyFeedView: View {
                     return
                 }
 
-                let threshold = size.height * 0.12
-                if value.translation.height <= -threshold {
-                    virtualPage += 1
-                } else if value.translation.height >= threshold {
-                    virtualPage = max(0, virtualPage - 1)
-                }
+                let threshold = size.height * 0.22
+                let predictedThreshold = size.height * 0.36
+                let shouldPageUp = value.translation.height <= -threshold || value.predictedEndTranslation.height <= -predictedThreshold
+                let shouldPageDown = value.translation.height >= threshold || value.predictedEndTranslation.height >= predictedThreshold
 
-                withAnimation(.smooth(duration: 0.22)) {
-                    swipeOffset = 0
+                if shouldPageUp {
+                    finishVirtualPageSwipe(.up, height: size.height)
+                } else if shouldPageDown {
+                    finishVirtualPageSwipe(.down, height: size.height)
+                } else {
+                    withAnimation(.smooth(duration: 0.22)) {
+                        swipeOffset = 0
+                    }
                 }
             }
+    }
+
+    private enum FeedSwipeDirection {
+        case up
+        case down
+    }
+
+    private func finishVirtualPageSwipe(_ direction: FeedSwipeDirection, height: CGFloat) {
+        isPaging = true
+        let targetOffset = direction == .up ? -height : height
+
+        withAnimation(.smooth(duration: 0.24)) {
+            swipeOffset = targetOffset
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                virtualPage += direction == .up ? 1 : -1
+                swipeOffset = 0
+            }
+            isPaging = false
+            player?.play()
+        }
+    }
+
+    private func clamped(_ value: CGFloat, min minimum: CGFloat, max maximum: CGFloat) -> CGFloat {
+        Swift.min(Swift.max(value, minimum), maximum)
+    }
+
+    private func thumbnailPage(in size: CGSize) -> some View {
+        ZStack {
+            Color(red: 0.025, green: 0.03, blue: 0.045)
+
+            if let thumbnailImage {
+                Image(uiImage: thumbnailImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: size.width - 32, height: size.height - 32)
+                    .clipped()
+            } else {
+                Image(systemName: "play.rectangle.fill")
+                    .font(.system(size: 56, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.34))
+            }
+
+            LinearGradient(
+                colors: [
+                    .black.opacity(0.18),
+                    .clear,
+                    .black.opacity(0.24)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .background(Color(red: 0.025, green: 0.03, blue: 0.045))
+        .clipped()
+    }
+
+    private var thumbnailImage: UIImage? {
+        guard let data = video.thumbnailData else { return nil }
+        return UIImage(data: data)
     }
 
     // MARK: - Player
@@ -331,6 +510,8 @@ struct StudyFeedView: View {
     }
 
     private func finishSessionAndDismiss() {
+        guard !isDismissing else { return }
+
         let duration = Date().timeIntervalSince(sessionStartTime)
         let session = StudySession(startTime: sessionStartTime, duration: duration)
         modelContext.insert(session)
@@ -343,7 +524,14 @@ struct StudyFeedView: View {
         }
         video.watchedDuration += duration
         try? modelContext.save()
-        dismiss()
+
+        withAnimation(.smooth(duration: 0.22)) {
+            isDismissing = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            dismiss()
+        }
     }
 
     private func playbackErrorView(_ message: String) -> some View {

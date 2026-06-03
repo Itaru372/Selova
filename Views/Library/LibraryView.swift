@@ -18,30 +18,37 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("Folders")) {
+                Section(header: Text("フォルダ")) {
                     ForEach(rootFolders) { folder in
                         NavigationLink(destination: FolderDetailView(folder: folder, activeVideo: $activeVideo)) {
                             Label(folder.name, systemImage: "folder.fill")
-                                .foregroundColor(.blue)
+                                .foregroundColor(TikTokTheme.cyan)
                         }
+                        .listRowBackground(TikTokTheme.elevatedBackground)
                     }
                     .onDelete(perform: deleteFolders)
                 }
                 
-                Section(header: Text("Videos")) {
+                Section(header: Text("動画")) {
                     ForEach(rootVideos) { video in
                         Button {
                             activeVideo = video
                         } label: {
                             Label(video.title, systemImage: "play.rectangle")
                         }
-                        .foregroundColor(.primary)
+                        .foregroundColor(TikTokTheme.primaryText)
+                        .listRowBackground(TikTokTheme.elevatedBackground)
                     }
                     .onDelete(perform: deleteVideos)
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Library")
+            .scrollContentBackground(.hidden)
+            .background(TikTokTheme.background)
+            .navigationTitle("ライブラリ")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(TikTokTheme.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -49,14 +56,16 @@ struct LibraryView: View {
                     } label: {
                         Image(systemName: "folder.badge.plus")
                     }
+                    .accessibilityLabel("フォルダを追加")
                 }
             }
-            .alert("New Folder", isPresented: $showingAddFolder) {
-                TextField("Folder Name", text: $newFolderName)
-                Button("Cancel", role: .cancel) {
+            .tint(TikTokTheme.cyan)
+            .alert("新規フォルダ", isPresented: $showingAddFolder) {
+                TextField("フォルダ名", text: $newFolderName)
+                Button("キャンセル", role: .cancel) {
                     newFolderName = ""
                 }
-                Button("Create") {
+                Button("作成") {
                     createFolder()
                 }
             }
@@ -67,6 +76,7 @@ struct LibraryView: View {
         guard !newFolderName.isEmpty else { return }
         let folder = FolderItem(name: newFolderName)
         modelContext.insert(folder)
+        try? modelContext.save()
         newFolderName = ""
     }
     
@@ -74,12 +84,21 @@ struct LibraryView: View {
         for index in offsets {
             modelContext.delete(rootFolders[index])
         }
+        try? modelContext.save()
     }
     
     private func deleteVideos(offsets: IndexSet) {
         for index in offsets {
-            modelContext.delete(rootVideos[index])
+            deleteVideo(rootVideos[index])
         }
+        try? modelContext.save()
+    }
+
+    private func deleteVideo(_ video: VideoItem) {
+        if activeVideo?.id == video.id {
+            activeVideo = nil
+        }
+        modelContext.delete(video)
     }
 }
 
@@ -94,34 +113,40 @@ struct FolderDetailView: View {
     var body: some View {
         List {
             if let children = folder.children, !children.isEmpty {
-                Section(header: Text("Subfolders")) {
+                Section(header: Text("サブフォルダ")) {
                     ForEach(children) { child in
                         NavigationLink(destination: FolderDetailView(folder: child, activeVideo: $activeVideo)) {
                             Label(child.name, systemImage: "folder.fill")
-                                .foregroundColor(.blue)
+                                .foregroundColor(TikTokTheme.cyan)
                         }
+                        .listRowBackground(TikTokTheme.elevatedBackground)
                     }
                     .onDelete(perform: deleteSubfolders)
                 }
             }
             
             if let videos = folder.videos, !videos.isEmpty {
-                Section(header: Text("Videos")) {
+                Section(header: Text("動画")) {
                     ForEach(videos) { video in
                         Button {
                             activeVideo = video
                         } label: {
                             Label(video.title, systemImage: "play.rectangle")
                         }
-                        .foregroundColor(.primary)
+                        .foregroundColor(TikTokTheme.primaryText)
+                        .listRowBackground(TikTokTheme.elevatedBackground)
                     }
                     .onDelete(perform: deleteVideos)
                 }
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(TikTokTheme.background)
         .navigationTitle(folder.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(TikTokTheme.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -129,14 +154,16 @@ struct FolderDetailView: View {
                 } label: {
                     Image(systemName: "folder.badge.plus")
                 }
+                .accessibilityLabel("サブフォルダを追加")
             }
         }
-        .alert("New Subfolder", isPresented: $showingAddFolder) {
-            TextField("Folder Name", text: $newFolderName)
-            Button("Cancel", role: .cancel) {
+        .tint(TikTokTheme.cyan)
+        .alert("新規サブフォルダ", isPresented: $showingAddFolder) {
+            TextField("フォルダ名", text: $newFolderName)
+            Button("キャンセル", role: .cancel) {
                 newFolderName = ""
             }
-            Button("Create") {
+            Button("作成") {
                 createSubfolder()
             }
         }
@@ -146,6 +173,7 @@ struct FolderDetailView: View {
         guard !newFolderName.isEmpty else { return }
         let subfolder = FolderItem(name: newFolderName, parent: folder)
         modelContext.insert(subfolder)
+        try? modelContext.save()
         newFolderName = ""
     }
     
@@ -154,12 +182,21 @@ struct FolderDetailView: View {
         for index in offsets {
             modelContext.delete(children[index])
         }
+        try? modelContext.save()
     }
     
     private func deleteVideos(offsets: IndexSet) {
         guard let videos = folder.videos else { return }
         for index in offsets {
-            modelContext.delete(videos[index])
+            deleteVideo(videos[index])
         }
+        try? modelContext.save()
+    }
+
+    private func deleteVideo(_ video: VideoItem) {
+        if activeVideo?.id == video.id {
+            activeVideo = nil
+        }
+        modelContext.delete(video)
     }
 }

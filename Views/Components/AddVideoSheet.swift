@@ -42,6 +42,7 @@ struct AddVideoSheet: View {
     @State private var localImportMessage: String?
 
     @Query(sort: \FolderItem.createdAt) private var allFolders: [FolderItem]
+    @Query(sort: \VideoItem.createdAt) private var allVideos: [VideoItem]
 
     var body: some View {
         NavigationStack {
@@ -57,24 +58,27 @@ struct AddVideoSheet: View {
                     }
                     .pickerStyle(.menu)
                 }
+                .listRowBackground(TikTokTheme.elevatedBackground)
 
                 Section(header: Text("動画")) {
                     if selectedType == .local {
                         if urlString.isEmpty {
                             HStack(spacing: 12) {
                                 PhotosPicker(selection: $selectedPhotoItem, matching: .videos) {
-                                    Label("写真", systemImage: "photo.on.rectangle.angled")
+                                    uploadButtonLabel(title: "写真", systemImage: "photo.on.rectangle.angled")
                                         .frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(.borderedProminent)
+                                .tint(TikTokTheme.actionBlue)
                                 
                                 Button {
                                     showingFileImporter = true
                                 } label: {
-                                    Label("ファイル", systemImage: "doc.fill")
+                                    uploadButtonLabel(title: "ファイル", systemImage: "doc.fill")
                                         .frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(.borderedProminent)
+                                .tint(TikTokTheme.actionBlue)
                             }
                         } else {
                             selectedLocalVideoRow
@@ -83,7 +87,7 @@ struct AddVideoSheet: View {
                         if let localImportMessage {
                             Label(localImportMessage, systemImage: "exclamationmark.triangle.fill")
                                 .font(.caption)
-                                .foregroundColor(.orange)
+                                .foregroundColor(TikTokTheme.pink)
                         }
                     } else {
                         HStack {
@@ -112,7 +116,7 @@ struct AddVideoSheet: View {
                                         .font(.caption)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
-                                        .background(Color.blue)
+                                        .background(TikTokTheme.pink)
                                         .foregroundColor(.white)
                                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                                 }
@@ -123,7 +127,14 @@ struct AddVideoSheet: View {
                     }
 
                     TextField("タイトル", text: $title)
+
+                    if titleIsDuplicate {
+                        Label("同じ名前の動画がすでにあります", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundColor(TikTokTheme.pink)
+                    }
                 }
+                .listRowBackground(TikTokTheme.elevatedBackground)
 
                 Section(header: Text("保存先")) {
                     Picker("フォルダ", selection: $selectedFolder) {
@@ -133,20 +144,28 @@ struct AddVideoSheet: View {
                         }
                     }
                 }
+                .listRowBackground(TikTokTheme.elevatedBackground)
             }
+            .scrollContentBackground(.hidden)
+            .background(TimeBasedBackgroundView())
             .navigationTitle("動画を追加")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .tint(TikTokTheme.readableBlue)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") {
                         dismiss()
                     }
+                    .fontWeight(.semibold)
+                    .foregroundStyle(TikTokTheme.readableBlue)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("追加") {
                         addVideo()
                     }
-                    .disabled(title.isEmpty || urlString.isEmpty)
+                    .disabled(!canAddVideo)
                 }
             }
             .onChange(of: selectedPhotoItem) { oldValue, newValue in
@@ -194,7 +213,20 @@ struct AddVideoSheet: View {
                 .frame(width: 24, height: 24)
             
             Text(title)
+                .foregroundStyle(TikTokTheme.primaryText)
         }
+    }
+
+    @ViewBuilder
+    private func uploadButtonLabel(title: String, systemImage: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .imageScale(.medium)
+                .symbolRenderingMode(.monochrome)
+            Text(title)
+        }
+        .font(.headline.weight(.semibold))
+        .foregroundStyle(.white)
     }
 
     @ViewBuilder
@@ -203,7 +235,7 @@ struct AddVideoSheet: View {
         case .local:
             Image(systemName: "folder.fill")
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TikTokTheme.readableBlue)
         case .youtube:
             Image("YouTubeLogo")
                 .renderingMode(.original)
@@ -228,10 +260,11 @@ struct AddVideoSheet: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title.isEmpty ? "選択済みの動画" : title)
                     .font(.body)
+                    .foregroundStyle(TikTokTheme.primaryText)
                     .lineLimit(1)
                 Text(formattedLocalVideoDetail)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TikTokTheme.secondaryText)
                     .lineLimit(1)
             }
             
@@ -242,7 +275,7 @@ struct AddVideoSheet: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title3)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TikTokTheme.secondaryText)
             }
             .buttonStyle(.plain)
         }
@@ -252,7 +285,7 @@ struct AddVideoSheet: View {
     private var thumbnailPreview: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.secondary.opacity(0.14))
+                .fill(TikTokTheme.panelStrong)
             
             if let thumbnailData,
                let image = UIImage(data: thumbnailData) {
@@ -289,6 +322,19 @@ struct AddVideoSheet: View {
         urlString = ""
         title = ""
         thumbnailData = nil
+    }
+
+    private var normalizedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var titleIsDuplicate: Bool {
+        guard !normalizedTitle.isEmpty else { return false }
+        return allVideos.contains { $0.title.trimmingCharacters(in: .whitespacesAndNewlines) == normalizedTitle }
+    }
+
+    private var canAddVideo: Bool {
+        !normalizedTitle.isEmpty && !urlString.isEmpty && !titleIsDuplicate
     }
 
     private func fetchTitle() async {
@@ -423,7 +469,8 @@ struct AddVideoSheet: View {
     }
 
     private func addVideo() {
-        let video = VideoItem(title: title, urlString: urlString, type: selectedType, duration: duration)
+        guard canAddVideo else { return }
+        let video = VideoItem(title: normalizedTitle, urlString: urlString, type: selectedType, duration: duration)
         video.folder = selectedFolder
         video.thumbnailData = thumbnailData
 

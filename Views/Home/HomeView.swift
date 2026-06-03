@@ -27,7 +27,7 @@ struct HomeView: View {
             }
             .navigationTitle("Home")
             .navigationBarHidden(true)
-            .environment(\.colorScheme, .light)
+            .background(TikTokTheme.background)
         }
     }
 }
@@ -45,10 +45,11 @@ struct FirstTimeHomeView: View {
             VStack(spacing: 12) {
                 Text("Focus Video")
                     .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                    .foregroundColor(TikTokTheme.primaryText)
 
                 Text("勉強を始めましょう")
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TikTokTheme.secondaryText)
             }
 
             Spacer()
@@ -59,14 +60,19 @@ struct FirstTimeHomeView: View {
                 } label: {
                     Text("今すぐ追加する")
                         .font(.headline.weight(.semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(TikTokTheme.primaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.blue)
+                                .fill(TikTokTheme.pink)
                         )
-                        .shadow(color: Color.blue.opacity(0.25), radius: 8, x: 0, y: 4)
+                        .overlay(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(TikTokTheme.cyan.opacity(0.22))
+                                .frame(width: 7)
+                        }
+                        .shadow(color: TikTokTheme.pink.opacity(0.26), radius: 12, x: 0, y: 6)
                 }
 
                 Button {
@@ -74,12 +80,16 @@ struct FirstTimeHomeView: View {
                 } label: {
                     Text("後で見るフォルダに追加")
                         .font(.headline.weight(.semibold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(TikTokTheme.primaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(.ultraThinMaterial)
+                                .fill(TikTokTheme.panelStrong)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(TikTokTheme.border, lineWidth: 1)
                         )
                 }
             }

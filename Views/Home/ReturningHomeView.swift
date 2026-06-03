@@ -20,7 +20,7 @@ struct ReturningHomeView: View {
                 recommendationsSection
                 Spacer(minLength: 32)
             }
-            .padding(.top, 8)
+            .padding(.top, 48)
         }
         .sheet(isPresented: $showingAddSheet) {
             AddVideoSheet(activeVideo: $activeVideo, onAddNow: nil)
@@ -34,17 +34,18 @@ struct ReturningHomeView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("こんにちは")
                         .font(.title2.weight(.semibold))
+                        .foregroundColor(TikTokTheme.primaryText)
                     Text("今日も一緒に学びましょう！")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(TikTokTheme.secondaryText)
                 }
                 Spacer()
                 Button(action: {}) {
                     Image(systemName: "tree.fill")
                         .font(.caption)
-                        .foregroundColor(.green)
+                        .foregroundColor(TikTokTheme.green)
                         .padding(10)
-                        .background(Circle().fill(.regularMaterial))
+                        .background(Circle().fill(TikTokTheme.panelStrong))
                 }
                 .buttonStyle(.plain)
             }
@@ -66,29 +67,23 @@ struct ReturningHomeView: View {
         .background {
             ZStack {
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.8)
+                    .fill(TikTokTheme.panelStrong)
 
                 VStack {
                     Spacer()
-                    Image(systemName: "tree.fill")
+                    Image(growthAssetName)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 130, height: 130)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.green.opacity(0.5), Color.green.opacity(0.2)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .offset(x: 10, y: 15)
+                        .frame(width: 168, height: 168)
+                        .offset(x: 8, y: 10)
+                        .transition(.scale.combined(with: .opacity))
+                        .animation(.smooth(duration: 0.35), value: growthAssetName)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                    .stroke(TikTokTheme.border, lineWidth: 1)
             )
         }
         .padding(.horizontal, 20)
@@ -100,8 +95,8 @@ struct ReturningHomeView: View {
                 title: "今すぐ学習する",
                 subtitle: "動画を追加して学習を始めましょう",
                 systemImage: "play.fill",
-                accent: Color(red: 0.25, green: 0.6, blue: 0.35),
-                background: Color(red: 0.92, green: 0.97, blue: 0.92)
+                accent: TikTokTheme.pink,
+                background: TikTokTheme.panelStrong
             ) {
                 showingAddSheet = true
             }
@@ -110,8 +105,8 @@ struct ReturningHomeView: View {
                 title: "後で見る",
                 subtitle: "フォルダを選んで動画を保存",
                 systemImage: "folder.fill",
-                accent: Color(red: 0.4, green: 0.45, blue: 0.85),
-                background: Color(red: 0.93, green: 0.93, blue: 0.98)
+                accent: TikTokTheme.cyan,
+                background: TikTokTheme.panelStrong
             ) {
                 showingAddSheet = true
             }
@@ -124,10 +119,11 @@ struct ReturningHomeView: View {
             HStack {
                 Text("おすすめ")
                     .font(.headline.weight(.semibold))
+                    .foregroundColor(TikTokTheme.primaryText)
                 Spacer()
                 Button("すべて見る") {}
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TikTokTheme.secondaryText)
                     .buttonStyle(.plain)
             }
 
@@ -135,14 +131,14 @@ struct ReturningHomeView: View {
                 VStack(spacing: 6) {
                     Text("おすすめ動画がまだありません")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(TikTokTheme.secondaryText)
                     Text("動画を追加するとここに表示されます")
                         .font(.caption)
-                        .foregroundColor(.secondary.opacity(0.6))
+                        .foregroundColor(TikTokTheme.mutedText)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(24)
-                .background(.ultraThinMaterial)
+                .background(TikTokTheme.panel)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             } else {
                 VStack(spacing: 10) {
@@ -188,6 +184,23 @@ struct ReturningHomeView: View {
         return max(1, Int(totalStudyTime / levelUnit) + 1)
     }
 
+    private var growthAssetName: String {
+        switch level {
+        case 1:
+            return "GrowthSeed"
+        case 2:
+            return "GrowthSprout"
+        case 3:
+            return "GrowthYoungTree"
+        case 4:
+            return "GrowthTree"
+        case 5:
+            return "GrowthFlowerTree"
+        default:
+            return "GrowthForest"
+        }
+    }
+
     private var levelProgress: Double {
         let levelUnit: TimeInterval = 3600
         let remainder = totalStudyTime.truncatingRemainder(dividingBy: levelUnit)
@@ -204,21 +217,21 @@ private struct TodayStudyCard: View {
             HStack(spacing: 5) {
                 Image(systemName: "clock.fill")
                     .font(.caption2)
-                    .foregroundColor(.green)
+                    .foregroundColor(TikTokTheme.cyan)
                 Text("今日の学習時間")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TikTokTheme.secondaryText)
             }
             Text("\(minutes)分")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
+                .foregroundColor(TikTokTheme.primaryText)
             Text(deltaText)
                 .font(.caption2)
-                .foregroundColor(deltaMinutes >= 0 ? .green : .secondary)
+                .foregroundColor(deltaMinutes >= 0 ? TikTokTheme.green : TikTokTheme.secondaryText)
                 .opacity(0.8)
         }
         .padding(14)
-        .background(.ultraThinMaterial)
+        .background(TikTokTheme.panelStrong)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
@@ -237,17 +250,18 @@ private struct LevelCard: View {
             HStack(spacing: 5) {
                 Image(systemName: "leaf.fill")
                     .font(.caption2)
-                    .foregroundColor(.green)
+                    .foregroundColor(TikTokTheme.green)
                 Text("Lv. \(level)")
                     .font(.caption.weight(.semibold))
+                    .foregroundColor(TikTokTheme.primaryText)
             }
             ProgressView(value: progress)
-                .tint(.green)
+                .tint(TikTokTheme.cyan)
                 .frame(width: 72)
                 .scaleEffect(x: 1, y: 0.8, anchor: .leading)
         }
         .padding(12)
-        .background(.ultraThinMaterial)
+        .background(TikTokTheme.panelStrong)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
@@ -276,11 +290,11 @@ private struct ActionCard: View {
                 }
                 Text(title)
                     .font(.headline.weight(.semibold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(TikTokTheme.primaryText)
                     .lineLimit(1)
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TikTokTheme.secondaryText)
                     .lineLimit(2)
                 Spacer(minLength: 0)
                 HStack {
@@ -298,9 +312,8 @@ private struct ActionCard: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.5), lineWidth: 1)
+                    .stroke(TikTokTheme.border, lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -322,18 +335,18 @@ private struct RecommendationRow: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(video.title)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(TikTokTheme.primaryText)
                         .lineLimit(1)
                     Text(categoryText)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(TikTokTheme.secondaryText)
                         .lineLimit(1)
                     HStack(spacing: 8) {
                         ProgressView(value: progress)
-                            .tint(Color(red: 0.35, green: 0.7, blue: 0.3))
+                            .tint(progress >= 0.9 ? TikTokTheme.pink : TikTokTheme.cyan)
                         Text(playbackProgressText)
                             .font(.caption2.monospacedDigit())
-                            .foregroundColor(.secondary)
+                            .foregroundColor(TikTokTheme.mutedText)
                     }
                 }
                 Spacer(minLength: 0)
@@ -341,11 +354,15 @@ private struct RecommendationRow: View {
                     .font(.caption)
                     .foregroundColor(.white)
                     .padding(9)
-                    .background(Color.green)
+                    .background(TikTokTheme.pink)
                     .clipShape(Circle())
             }
             .padding(12)
-            .background(.ultraThinMaterial)
+            .background(TikTokTheme.panelStrong)
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(TikTokTheme.border, lineWidth: 1)
+            )
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -454,7 +471,7 @@ private struct VideoThumbnail: View {
 
     private var placeholder: some View {
         LinearGradient(
-            colors: [Color.gray.opacity(0.25), Color.gray.opacity(0.1)],
+            colors: [Color.white.opacity(0.96), TikTokTheme.cyan.opacity(0.16)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )

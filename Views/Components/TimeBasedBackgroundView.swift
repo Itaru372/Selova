@@ -6,24 +6,28 @@ struct TimeBasedBackgroundView: View {
     }
     
     var gradientColors: [Color] {
-        switch hour {
-        case 5..<11: // Morning (Bright warm sunrise to light sky)
-            return [Color(red: 1.0, green: 0.96, blue: 0.85), Color(red: 0.85, green: 0.95, blue: 1.0)]
-        case 11..<16: // Day (Very light sky blue to clear blue)
-            return [Color(red: 0.88, green: 0.95, blue: 1.0), Color(red: 0.75, green: 0.90, blue: 1.0)]
-        case 16..<19: // Evening (Soft pastel peach to light rose)
-            return [Color(red: 1.0, green: 0.92, blue: 0.88), Color(red: 1.0, green: 0.85, blue: 0.85)]
-        default: // Night (Light lavender to soft blue)
-            return [Color(red: 0.90, green: 0.90, blue: 0.98), Color(red: 0.85, green: 0.85, blue: 0.95)]
-        }
+        [
+            Color(red: 0.99, green: 0.99, blue: 1.0),
+            Color(red: 0.94, green: 0.98, blue: 1.0),
+            TikTokTheme.background
+        ]
     }
     
     var body: some View {
-        LinearGradient(
-            colors: gradientColors,
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        ZStack {
+            LinearGradient(
+                colors: gradientColors,
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            LinearGradient(
+                colors: [TikTokTheme.pink.opacity(0.10), .clear, TikTokTheme.cyan.opacity(0.14)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .blendMode(.screen)
+        }
         .ignoresSafeArea()
     }
 }
