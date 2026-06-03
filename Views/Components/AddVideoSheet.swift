@@ -48,11 +48,11 @@ struct AddVideoSheet: View {
             Form {
                 Section(header: Text("種類")) {
                     Picker("ソース", selection: $selectedType) {
-                        Label("ローカル", systemImage: "folder.fill")
+                        sourcePickerLabel(title: "ローカル", type: .local)
                             .tag(VideoType.local)
-                        Label("YouTube", systemImage: "play.rectangle.fill")
+                        sourcePickerLabel(title: "YouTube", type: .youtube)
                             .tag(VideoType.youtube)
-                        Label("Vimeo", systemImage: "video.fill")
+                        sourcePickerLabel(title: "Vimeo", type: .vimeo)
                             .tag(VideoType.vimeo)
                     }
                     .pickerStyle(.menu)
@@ -184,6 +184,40 @@ struct AddVideoSheet: View {
                     print("Failed to import local file: \(error)")
                 }
             }
+        }
+    }
+    
+    @ViewBuilder
+    private func sourcePickerLabel(title: String, type: VideoType) -> some View {
+        HStack(spacing: 8) {
+            sourceIcon(for: type)
+                .frame(width: 24, height: 24)
+            
+            Text(title)
+        }
+    }
+
+    @ViewBuilder
+    private func sourceIcon(for type: VideoType) -> some View {
+        switch type {
+        case .local:
+            Image(systemName: "folder.fill")
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+        case .youtube:
+            Image("YouTubeLogo")
+                .renderingMode(.original)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 16, height: 16)
+                .clipped()
+        case .vimeo:
+            Image("VimeoLogo")
+                .renderingMode(.original)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 16, height: 16)
+                .clipped()
         }
     }
     
