@@ -9,6 +9,7 @@ struct ReturningHomeView: View {
     var totalStudyTime: TimeInterval
 
     @State private var showingAddSheet = false
+    @State private var addDestination: AddDestination = .watchLater
     @Query(sort: \StudySession.startTime, order: .reverse) private var studySessions: [StudySession]
     @Query(sort: \VideoItem.lastWatchedAt, order: .reverse) private var recentVideos: [VideoItem]
 
@@ -23,7 +24,10 @@ struct ReturningHomeView: View {
             .padding(.top, 48)
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddVideoSheet(activeVideo: $activeVideo, onAddNow: nil)
+            AddVideoSheet(
+                activeVideo: $activeVideo,
+                onAddNow: addDestination == .startNow ? {} : nil
+            )
         }
     }
 
@@ -98,6 +102,7 @@ struct ReturningHomeView: View {
                 accent: TikTokTheme.pink,
                 background: TikTokTheme.panelStrong
             ) {
+                addDestination = .startNow
                 showingAddSheet = true
             }
 
@@ -108,6 +113,7 @@ struct ReturningHomeView: View {
                 accent: TikTokTheme.cyan,
                 background: TikTokTheme.panelStrong
             ) {
+                addDestination = .watchLater
                 showingAddSheet = true
             }
         }
@@ -206,6 +212,11 @@ struct ReturningHomeView: View {
         let remainder = totalStudyTime.truncatingRemainder(dividingBy: levelUnit)
         return min(max(remainder / levelUnit, 0), 1)
     }
+}
+
+private enum AddDestination {
+    case startNow
+    case watchLater
 }
 
 private struct TodayStudyCard: View {
