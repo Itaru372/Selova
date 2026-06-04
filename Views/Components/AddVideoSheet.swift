@@ -189,19 +189,14 @@ struct AddVideoSheet: View {
                 localImportMessage = nil
                 selectedPhotoItem = nil
             }
-            .fileImporter(
-                isPresented: $showingFileImporter,
-                allowedContentTypes: [.movie, .video, .mpeg4Movie, .quickTimeMovie],
-                allowsMultipleSelection: false
-            ) { result in
-                do {
-                    guard let fileURL = try result.get().first else { return }
+            .fullScreenCover(isPresented: $showingFileImporter) {
+                LocalVideoDocumentPicker { fileURL in
+                    showingFileImporter = false
                     Task {
                         await importLocalVideo(from: fileURL)
                     }
-                } catch {
-                    print("Failed to import local file: \(error)")
                 }
+                .ignoresSafeArea()
             }
         }
     }
@@ -330,7 +325,11 @@ struct AddVideoSheet: View {
 
     private var titleIsDuplicate: Bool {
         guard !normalizedTitle.isEmpty else { return false }
-        return allVideos.contains { $0.title.trimmingCharacters(in: .whitespacesAndNewlines) == normalizedTitle }
+        return allVideos.contains {
+            $0.title
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .localizedCaseInsensitiveCompare(normalizedTitle) == .orderedSame
+        }
     }
 
     private var canAddVideo: Bool {
@@ -483,6 +482,39 @@ struct AddVideoSheet: View {
             dismiss()
         } else {
             dismiss()
+        }
+    }
+}
+
+private struct LocalVideoDocumentPicker: UIViewControllerRepresentable {
+    var onPick: (URL) -> Void
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(
+            forOpeningContentTypes: [.movie, .video, .mpeg4Movie, .quickTimeMovie],
+            asCopy: true
+        )
+        picker.allowsMultipleSelection = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onPick: onPick)
+    }
+
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        var onPick: (URL) -> Void
+
+        init(onPick: @escaping (URL) -> Void) {
+            self.onPick = onPick
+        }
+
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first else { return }
+            onPick(url)
         }
     }
 }

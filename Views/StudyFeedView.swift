@@ -2,6 +2,7 @@ import SwiftUI
 import AVKit
 import WebKit
 import SwiftData
+import UserNotifications
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -9,6 +10,7 @@ import UIKit
 struct StudyFeedView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
 
     var video: VideoItem
     @State private var sessionStartTime = Date()
@@ -20,6 +22,7 @@ struct StudyFeedView: View {
     @State private var virtualPage = 0
     @State private var isPaging = false
     @State private var isDismissing = false
+    @State private var didScheduleCloseReminders = false
 
     init(video: VideoItem) {
         self.video = video
@@ -49,38 +52,72 @@ struct StudyFeedView: View {
                 sessionStartTime = Date()
                 video.lastWatchedAt = Date()
                 setupPlayer()
+                requestStudyReminderAuthorization()
             }
             .onDisappear {
                 stopPlayer()
             }
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                handleScenePhaseChange(from: oldPhase, to: newPhase)
+            }
+            #if canImport(UIKit)
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                scheduleCloseReminderNotificationsIfNeeded()
+            }
+            #endif
+        }
+        .ignoresSafeArea()
+    }
+
+    @ViewBuilder
+    private func videoPage(in size: CGSize) -> some View {
+        if size.width > size.height {
+            landscapeVideoPage(in: size)
+        } else {
+            portraitVideoPage(in: size)
         }
     }
 
-    private func videoPage(in size: CGSize) -> some View {
+    private func landscapeVideoPage(in size: CGSize) -> some View {
+        ZStack {
+            playerContainer(gravity: .resizeAspect)
+                .frame(width: size.width, height: size.height)
+                .background(Color.black)
+                .clipped()
+
+            if let playbackError {
+                playbackErrorView(playbackError)
+                    .padding(.horizontal, 28)
+                    .zIndex(2)
+            }
+
+            backButton
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .zIndex(3)
+        }
+        .frame(width: size.width, height: size.height)
+    }
+
+    private func portraitVideoPage(in size: CGSize) -> some View {
         ZStack {
             feedPageSurface(in: size) {
                 thumbnailPage(in: size)
             }
-                .frame(width: size.width, height: size.height)
-                .offset(y: -size.height + swipeOffset)
+            .frame(width: size.width, height: size.height)
+            .offset(y: -size.height + swipeOffset)
 
             feedPageSurface(in: size) {
                 thumbnailPage(in: size)
             }
-                .frame(width: size.width, height: size.height)
-                .offset(y: size.height + swipeOffset)
+            .frame(width: size.width, height: size.height)
+            .offset(y: size.height + swipeOffset)
 
             feedPageSurface(in: size) {
                 playerContainer(gravity: .resizeAspect)
             }
-                .frame(width: size.width, height: size.height)
-                .offset(y: swipeOffset)
-                .zIndex(1)
-
-            pageEdgeIndicator(in: size)
-                .opacity(abs(swipeOffset) > 12 ? 1 : 0.45)
-                .animation(.smooth(duration: 0.18), value: swipeOffset)
-                .zIndex(2)
+            .frame(width: size.width, height: size.height)
+            .offset(y: swipeOffset)
+            .zIndex(1)
 
             if let playbackError {
                 playbackErrorView(playbackError)
@@ -154,31 +191,6 @@ struct StudyFeedView: View {
                 .padding(.vertical, verticalInset)
         )
         .shadow(color: Color.black.opacity(0.36), radius: 24, x: 0, y: 14)
-    }
-
-    private func pageEdgeIndicator(in size: CGSize) -> some View {
-        VStack(spacing: 0) {
-            edgeCapsule
-                .offset(y: 20)
-            Spacer()
-            edgeCapsule
-                .offset(y: -20)
-        }
-        .frame(width: size.width, height: size.height)
-        .allowsHitTesting(false)
-    }
-
-    private var edgeCapsule: some View {
-        Capsule()
-            .fill(Color.white.opacity(0.76))
-            .frame(width: 46, height: 4)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-        .background(Color.black.opacity(0.32), in: Capsule())
-        .overlay(
-            Capsule()
-                .stroke(Color.white.opacity(0.16), lineWidth: 1)
-        )
     }
 
     private func feedSwipeGesture(in size: CGSize) -> some Gesture {
@@ -511,6 +523,7 @@ struct StudyFeedView: View {
 
     private func finishSessionAndDismiss() {
         guard !isDismissing else { return }
+        cancelCloseReminderNotifications()
 
         let duration = Date().timeIntervalSince(sessionStartTime)
         let session = StudySession(startTime: sessionStartTime, duration: duration)
@@ -568,6 +581,126 @@ struct StudyFeedView: View {
         return seconds
     }
 
+    // MARK: - Close Reminders
+
+    private func handleScenePhaseChange(from oldPhase: ScenePhase, to newPhase: ScenePhase) {
+        switch newPhase {
+        case .active:
+            didScheduleCloseReminders = false
+            cancelCloseReminderNotifications()
+            if oldPhase == .background || oldPhase == .inactive {
+                video.lastWatchedAt = Date()
+                setupPlayer()
+            }
+        case .background:
+            scheduleCloseReminderNotificationsIfNeeded()
+        case .inactive:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    private var closeReminderNotificationIDs: [String] {
+        ["immediate", "5min", "10min"].map {
+            "study-close-reminder-\(video.id.uuidString)-\($0)"
+        }
+    }
+
+    private func requestStudyReminderAuthorization() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+    }
+
+    private func scheduleCloseReminderNotificationsIfNeeded() {
+        guard !didScheduleCloseReminders else { return }
+        let elapsed = Date().timeIntervalSince(sessionStartTime)
+        guard elapsed >= 20 else { return }
+
+        didScheduleCloseReminders = true
+        persistCurrentPlaybackPosition()
+
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
+                debugCloseReminderLog("notification authorization unavailable: \(settings.authorizationStatus.rawValue)")
+                return
+            }
+
+            center.removePendingNotificationRequests(withIdentifiers: closeReminderNotificationIDs)
+            debugCloseReminderLog("scheduling close reminders after \(Int(elapsed))s")
+
+            let title = video.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            let displayTitle = title.isEmpty ? "学習動画" : title
+            let reminders: [(id: String, delay: TimeInterval?, body: String)] = [
+                (
+                    "immediate",
+                    nil,
+                    "いま閉じた動画の続きに戻れます。"
+                ),
+                (
+                    "5min",
+                    5 * 60,
+                    "5分経ちました。もう一度だけ続きを見てみませんか。"
+                ),
+                (
+                    "10min",
+                    10 * 60,
+                    "10分経ちました。短く再開して流れを戻しましょう。"
+                )
+            ]
+
+            for reminder in reminders {
+                let content = UNMutableNotificationContent()
+                content.title = displayTitle
+                content.body = reminder.body
+                content.sound = .default
+                content.categoryIdentifier = "study-close-reminder"
+
+                let trigger = reminder.delay.map {
+                    UNTimeIntervalNotificationTrigger(timeInterval: $0, repeats: false)
+                }
+                let request = UNNotificationRequest(
+                    identifier: "study-close-reminder-\(video.id.uuidString)-\(reminder.id)",
+                    content: content,
+                    trigger: trigger
+                )
+                center.add(request) { error in
+                    if let error {
+                        debugCloseReminderLog("failed to schedule \(reminder.id): \(error.localizedDescription)")
+                    }
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                center.getPendingNotificationRequests { requests in
+                    let pendingIDs = requests
+                        .map(\.identifier)
+                        .filter { closeReminderNotificationIDs.contains($0) }
+                    debugCloseReminderLog("pending close reminders: \(pendingIDs.count)")
+                }
+            }
+        }
+    }
+
+    private func persistCurrentPlaybackPosition() {
+        if let player,
+           let currentTime = Self.validPlaybackTime(player.currentTime().seconds) {
+            video.lastPlaybackTime = currentTime
+        }
+        video.lastWatchedAt = Date()
+        try? modelContext.save()
+    }
+
+    private func cancelCloseReminderNotifications() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: closeReminderNotificationIDs)
+    }
+
+}
+
+private func debugCloseReminderLog(_ message: String) {
+    #if DEBUG
+    print("[StudyCloseReminder] \(message)")
+    #endif
 }
 
 private struct LocalAVPlayerControllerView: UIViewControllerRepresentable {

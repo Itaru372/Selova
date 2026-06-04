@@ -331,7 +331,7 @@ struct LibraryView: View {
 
     private func progress(for video: VideoItem) -> Double {
         guard video.duration > 0 else { return 0 }
-        return min(max(video.watchedDuration / video.duration, 0), 1)
+        return min(max(lastPlaybackPosition(for: video) / video.duration, 0), 1)
     }
 
     private func folderNameIsInvalid(_ name: String, parent: FolderItem?, excluding excludedFolder: FolderItem? = nil) -> Bool {
@@ -660,7 +660,7 @@ struct FolderDetailView: View {
 
     private func progress(for video: VideoItem) -> Double {
         guard video.duration > 0 else { return 0 }
-        return min(max(video.watchedDuration / video.duration, 0), 1)
+        return min(max(lastPlaybackPosition(for: video) / video.duration, 0), 1)
     }
 
     private func folderNameIsInvalid(_ name: String, parent: FolderItem?, excluding excludedFolder: FolderItem? = nil) -> Bool {
@@ -785,8 +785,7 @@ struct VideoLibraryRow: View {
     }
 
     private var progressText: String {
-        let progress = video.duration > 0 ? min(max(video.watchedDuration / video.duration, 0), 1) : 0
-        return "\(Int(progress * 100))%"
+        playbackPositionText(for: video)
     }
 }
 
@@ -866,4 +865,34 @@ private func folderContainsVideo(_ folder: FolderItem, videoID: UUID) -> Bool {
     return (folder.children ?? []).contains { child in
         folderContainsVideo(child, videoID: videoID)
     }
+}
+
+private func playbackPositionText(for video: VideoItem) -> String {
+    let playbackTime = lastPlaybackPosition(for: video)
+    guard playbackTime > 0 else {
+        return "未視聴"
+    }
+
+    if video.duration > 0 {
+        return "\(formattedPlaybackPosition(playbackTime))まで / \(formattedPlaybackPosition(video.duration))"
+    }
+    return "\(formattedPlaybackPosition(playbackTime))まで"
+}
+
+private func lastPlaybackPosition(for video: VideoItem) -> TimeInterval {
+    guard let playbackTime = video.lastPlaybackTime, playbackTime.isFinite, playbackTime > 0 else {
+        return 0
+    }
+    return playbackTime
+}
+
+private func formattedPlaybackPosition(_ seconds: TimeInterval) -> String {
+    let totalSeconds = max(0, Int(seconds.rounded(.down)))
+    let minutes = totalSeconds / 60
+    let remainingSeconds = totalSeconds % 60
+
+    if minutes == 0 {
+        return "0:\(String(format: "%02d", remainingSeconds))"
+    }
+    return "\(minutes)分"
 }

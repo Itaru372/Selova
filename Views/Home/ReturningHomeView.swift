@@ -381,14 +381,23 @@ private struct RecommendationRow: View {
 
     private var progress: Double {
         guard video.duration > 0 else { return 0 }
-        return min(max(video.watchedDuration / video.duration, 0), 1)
+        return min(max(lastPlaybackPosition / video.duration, 0), 1)
     }
 
     private var playbackProgressText: String {
-        guard video.duration > 0 else { return "再生中" }
-        let watchedMins = Int(video.watchedDuration / 60)
-        let totalMins = Int(video.duration / 60)
-        return "\(watchedMins)分 / \(totalMins)分"
+        guard lastPlaybackPosition > 0 else { return "未視聴" }
+        guard video.duration > 0 else { return "\(formattedPlaybackPosition(lastPlaybackPosition))まで" }
+        return "\(formattedPlaybackPosition(lastPlaybackPosition))まで / \(formattedPlaybackPosition(video.duration))"
+    }
+
+    private var lastPlaybackPosition: TimeInterval {
+        guard let lastPlaybackTime = video.lastPlaybackTime,
+              lastPlaybackTime.isFinite,
+              lastPlaybackTime > 0
+        else {
+            return 0
+        }
+        return lastPlaybackTime
     }
 
     private var categoryText: String {
@@ -409,7 +418,7 @@ private struct RecommendationRow: View {
         if progress >= 0.9 {
             return "あと少し"
         }
-        if video.watchedDuration > 0 {
+        if lastPlaybackPosition > 0 {
             return "続きから"
         }
         return "未視聴"
@@ -425,6 +434,17 @@ private struct RecommendationRow: View {
         let minutes = totalSeconds / 60
         let remainingSeconds = totalSeconds % 60
         return String(format: "%d:%02d", minutes, remainingSeconds)
+    }
+
+    private func formattedPlaybackPosition(_ seconds: TimeInterval) -> String {
+        let totalSeconds = max(0, Int(seconds.rounded(.down)))
+        let minutes = totalSeconds / 60
+        let remainingSeconds = totalSeconds % 60
+
+        if minutes == 0 {
+            return "0:\(String(format: "%02d", remainingSeconds))"
+        }
+        return "\(minutes)分"
     }
 }
 

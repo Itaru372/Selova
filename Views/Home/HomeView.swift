@@ -37,6 +37,7 @@ struct FirstTimeHomeView: View {
     var onStart: () -> Void
 
     @State private var showingAddSheet = false
+    @State private var addDestination: FirstTimeAddDestination = .startNow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,6 +57,7 @@ struct FirstTimeHomeView: View {
 
             VStack(spacing: 14) {
                 Button {
+                    addDestination = .startNow
                     showingAddSheet = true
                 } label: {
                     Text("今すぐ追加する")
@@ -76,6 +78,7 @@ struct FirstTimeHomeView: View {
                 }
 
                 Button {
+                    addDestination = .watchLater
                     showingAddSheet = true
                 } label: {
                     Text("後で見るフォルダに追加")
@@ -98,9 +101,17 @@ struct FirstTimeHomeView: View {
             Spacer()
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddVideoSheet(activeVideo: $activeVideo, onAddNow: {
-                onStart()
-            })
+            AddVideoSheet(
+                activeVideo: $activeVideo,
+                onAddNow: addDestination == .startNow ? {
+                    onStart()
+                } : nil
+            )
         }
     }
+}
+
+private enum FirstTimeAddDestination {
+    case startNow
+    case watchLater
 }

@@ -19,7 +19,7 @@ struct ContentView: View {
                 }
                 .tag(1)
         }
-        .tint(TikTokTheme.cyan)
+        .tint(TikTokTheme.readableBlue)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .fullScreenCover(item: $activeVideo) { video in

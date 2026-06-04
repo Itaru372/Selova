@@ -12,9 +12,35 @@
 		8EEEBC6B2FC6FD8E0082886A /* FocusVideoApp.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FocusVideoApp.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8E4A7D012FD1A66000B6B9A1 /* Exceptions for repository support files in "FocusVideoApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				AGENTS.md,
+				.xcodebuildmcp/config.yaml,
+				Memory/.DS_Store,
+				Memory/.obsidian/app.json,
+				Memory/.obsidian/appearance.json,
+				Memory/.obsidian/core-plugins.json,
+				Memory/.obsidian/workspace.json,
+				Memory/Current.md,
+				Memory/Daily/2026-06-03.md,
+				Memory/Daily/2026-06-04.md,
+				Memory/Decisions.md,
+				Memory/Learned.md,
+				Memory/ProjectMap.md,
+				README.md,
+			);
+			target = 8E860E2F2FC59E4C00D2BC2B /* FocusVideoApp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8E860E322FC59E4C00D2BC2B = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8E4A7D012FD1A66000B6B9A1 /* Exceptions for repository support files in "FocusVideoApp" target */,
+			);
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
