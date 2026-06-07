@@ -132,4 +132,16 @@ final class StudyProgressTests: XCTestCase {
             base.xp + StudyGrowth.videoCompletionXP * 2
         )
     }
+
+    func testVideoTimestampFormatterParsesManualTimestamps() {
+        XCTAssertEqual(VideoTimestampFormatter.seconds(from: "20:15"), 20 * 60 + 15)
+        XCTAssertEqual(VideoTimestampFormatter.seconds(from: "1:05:30"), 1 * 3600 + 5 * 60 + 30)
+        XCTAssertNil(VideoTimestampFormatter.seconds(from: "1:80"))
+        XCTAssertNil(VideoTimestampFormatter.seconds(from: "abc"))
+    }
+
+    func testVideoTimestampFormatterFormatsTimestamps() {
+        XCTAssertEqual(VideoTimestampFormatter.string(from: 20 * 60 + 15), "20:15")
+        XCTAssertEqual(VideoTimestampFormatter.string(from: 1 * 3600 + 5 * 60 + 30), "1:05:30")
+    }
 }

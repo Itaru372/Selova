@@ -25,6 +25,7 @@ struct LibraryView: View {
     @State private var folderPendingEdit: FolderItem?
     @State private var editedFolderName = ""
     @State private var videoPendingMove: VideoItem?
+    @State private var videoPendingNotes: VideoItem?
     @State private var searchText = ""
     @State private var sortOption: LibrarySortOption = .createdNewest
 
@@ -139,6 +140,18 @@ struct LibraryView: View {
                 MoveVideoSheet(video: video)
                     .presentationDetents([.medium])
             }
+            .sheet(item: $videoPendingNotes) { video in
+                VideoNotesSheet(
+                    video: video,
+                    currentTime: nil,
+                    isInStudyMode: false,
+                    onJump: { timestamp in
+                        openVideo(video, at: timestamp)
+                    }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
         }
     }
 
@@ -207,6 +220,12 @@ struct LibraryView: View {
                 } label: {
                     Label("フォルダに移動", systemImage: "folder")
                 }
+
+                Button {
+                    videoPendingNotes = video
+                } label: {
+                    Label("メモを表示", systemImage: "note.text")
+                }
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .font(.title3)
@@ -225,6 +244,11 @@ struct LibraryView: View {
             }
             .tint(TikTokTheme.actionBlue)
         }
+    }
+
+    private func openVideo(_ video: VideoItem, at timestamp: TimeInterval) {
+        video.requestedPlaybackTime = max(0, timestamp)
+        activeVideo = video
     }
 
     private func matchesSearch(_ text: String) -> Bool {
@@ -416,6 +440,7 @@ struct FolderDetailView: View {
     @State private var folderPendingEdit: FolderItem?
     @State private var editedFolderName = ""
     @State private var videoPendingMove: VideoItem?
+    @State private var videoPendingNotes: VideoItem?
     @State private var showingAddVideo = false
     @State private var searchText = ""
 
@@ -532,6 +557,18 @@ struct FolderDetailView: View {
             MoveVideoSheet(video: video)
                 .presentationDetents([.medium])
         }
+        .sheet(item: $videoPendingNotes) { video in
+            VideoNotesSheet(
+                video: video,
+                currentTime: nil,
+                isInStudyMode: false,
+                onJump: { timestamp in
+                    openVideo(video, at: timestamp)
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $showingAddVideo) {
             AddVideoSheet(
                 activeVideo: $activeVideo,
@@ -584,6 +621,12 @@ struct FolderDetailView: View {
                 } label: {
                     Label("フォルダに移動", systemImage: "folder")
                 }
+
+                Button {
+                    videoPendingNotes = video
+                } label: {
+                    Label("メモを表示", systemImage: "note.text")
+                }
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .font(.title3)
@@ -602,6 +645,11 @@ struct FolderDetailView: View {
             }
             .tint(TikTokTheme.actionBlue)
         }
+    }
+
+    private func openVideo(_ video: VideoItem, at timestamp: TimeInterval) {
+        video.requestedPlaybackTime = max(0, timestamp)
+        activeVideo = video
     }
 
     private func matchesSearch(_ text: String) -> Bool {
@@ -864,6 +912,9 @@ struct VideoLibraryRow: View {
                 HStack(spacing: 6) {
                     statusBadge
                     sourceBadge
+                    if noteCount > 0 {
+                        noteBadge
+                    }
 
                     if showsFolderPath, let folder = video.folder {
                         Label(folderPath(for: folder), systemImage: "folder.fill")
@@ -909,12 +960,26 @@ struct VideoLibraryRow: View {
             .clipShape(Capsule())
     }
 
+    private var noteBadge: some View {
+        Label("\(noteCount)", systemImage: "note.text")
+            .foregroundStyle(TikTokTheme.readableBlue)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(TikTokTheme.readableBlue.opacity(0.12))
+            .clipShape(Capsule())
+            .accessibilityLabel("メモ \(noteCount) 件")
+    }
+
     private var progressText: String {
         StudyProgress.compactPlaybackPositionText(for: video)
     }
 
     private var hasPlaybackPosition: Bool {
         StudyProgress.lastPlaybackPosition(for: video) > 0
+    }
+
+    private var noteCount: Int {
+        video.notes?.count ?? 0
     }
 
     private var progress: Double {

@@ -43,8 +43,14 @@ final class VideoItem {
     var lastPlaybackTime: Double?
     var completionCount: Int?
     var thumbnailData: Data?
+
+    @Transient
+    var requestedPlaybackTime: Double?
     
     var folder: FolderItem?
+
+    @Relationship(deleteRule: .cascade, inverse: \VideoNote.video)
+    var notes: [VideoNote]?
     
     var type: VideoType {
         get { VideoType(rawValue: typeRawValue) ?? .youtube }
@@ -60,6 +66,33 @@ final class VideoItem {
         self.duration = duration
         self.watchedDuration = watchedDuration
         self.completionCount = completionCount
+    }
+}
+
+@Model
+final class VideoNote {
+    var id: UUID
+    var timestamp: TimeInterval
+    var text: String
+    var createdAt: Date
+    var updatedAt: Date
+
+    var video: VideoItem?
+
+    init(
+        id: UUID = UUID(),
+        timestamp: TimeInterval,
+        text: String = "",
+        createdAt: Date = Date(),
+        updatedAt: Date = Date(),
+        video: VideoItem? = nil
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.text = text
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.video = video
     }
 }
 

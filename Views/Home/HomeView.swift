@@ -278,7 +278,7 @@ private struct HomeViewPreviewHost: View {
     @State private var activeVideo: VideoItem?
 
     private var previewContainer: ModelContainer {
-        let schema = Schema([FolderItem.self, VideoItem.self, StudySession.self])
+        let schema = Schema([FolderItem.self, VideoItem.self, VideoNote.self, StudySession.self])
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         return try! ModelContainer(for: schema, configurations: [configuration])
     }

@@ -12,7 +12,7 @@ struct StudyFeedView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
-
+    
     var video: VideoItem
     @State private var sessionStartTime = Date()
     @State private var player: AVPlayer?
@@ -28,7 +28,9 @@ struct StudyFeedView: View {
     @State private var webPlayerReloadID = UUID()
     @State private var webPlaybackStartTime: Double?
     @State private var shouldStopWebPlayback = false
-
+    @State private var webPauseToken = UUID()
+    @State private var showingNotes = false
+    
     init(video: VideoItem) {
         self.video = video
         if video.type == .local {
@@ -37,7 +39,7 @@ struct StudyFeedView: View {
             _player = State(initialValue: nil)
         }
     }
-
+    
     var body: some View {
         GeometryReader { proxy in
             ZStack {
@@ -73,15 +75,15 @@ struct StudyFeedView: View {
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 handleScenePhaseChange(from: oldPhase, to: newPhase)
             }
-            #if canImport(UIKit)
+#if canImport(UIKit)
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
                 scheduleCloseReminderNotificationsIfNeeded()
             }
-            #endif
+#endif
         }
         .ignoresSafeArea()
     }
-
+    
     @ViewBuilder
     private func videoPage(in size: CGSize) -> some View {
         if video.type == .local {
@@ -98,27 +100,31 @@ struct StudyFeedView: View {
             }
         }
     }
-
+    
     private func webLandscapeVideoPage(in size: CGSize) -> some View {
         ZStack {
             feedPageSurface(in: size) {
                 playerContainer(gravity: .resizeAspect)
             }
             .frame(width: size.width, height: size.height)
-
+            
             if let playbackError {
                 playbackErrorView(playbackError)
                     .padding(.horizontal, 28)
                     .zIndex(2)
             }
-
+            
             backButton
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .zIndex(3)
+            
+            noteButton
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 .zIndex(3)
         }
         .frame(width: size.width, height: size.height)
     }
-
+    
     private func webPortraitVideoPage(in size: CGSize) -> some View {
         ZStack {
             feedPageSurface(in: size) {
@@ -126,53 +132,61 @@ struct StudyFeedView: View {
             }
             .frame(width: size.width, height: size.height)
             .offset(y: -size.height + swipeOffset)
-
+            
             feedPageSurface(in: size) {
                 thumbnailPage(in: size)
             }
             .frame(width: size.width, height: size.height)
             .offset(y: size.height + swipeOffset)
-
+            
             feedPageSurface(in: size) {
                 playerContainer(gravity: .resizeAspect)
             }
             .frame(width: size.width, height: size.height)
             .offset(y: swipeOffset)
             .zIndex(1)
-
+            
             if let playbackError {
                 playbackErrorView(playbackError)
                     .padding(.horizontal, 28)
                     .zIndex(2)
             }
-
+            
             backButton
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .zIndex(3)
+            
+            noteButton
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 .zIndex(3)
         }
         .frame(width: size.width, height: size.height)
     }
-
+    
     private func landscapeVideoPage(in size: CGSize) -> some View {
         ZStack {
             playerContainer(gravity: .resizeAspect)
                 .frame(width: size.width, height: size.height)
                 .background(Color.black)
                 .clipped()
-
+            
             if let playbackError {
                 playbackErrorView(playbackError)
                     .padding(.horizontal, 28)
                     .zIndex(2)
             }
-
+            
             backButton
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .zIndex(3)
+            
+            noteButton
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 .zIndex(3)
         }
         .frame(width: size.width, height: size.height)
     }
-
+    
     private func portraitVideoPage(in size: CGSize) -> some View {
         ZStack {
             feedPageSurface(in: size) {
@@ -180,33 +194,37 @@ struct StudyFeedView: View {
             }
             .frame(width: size.width, height: size.height)
             .offset(y: -size.height + swipeOffset)
-
+            
             feedPageSurface(in: size) {
                 thumbnailPage(in: size)
             }
             .frame(width: size.width, height: size.height)
             .offset(y: size.height + swipeOffset)
-
+            
             feedPageSurface(in: size) {
                 playerContainer(gravity: .resizeAspect)
             }
             .frame(width: size.width, height: size.height)
             .offset(y: swipeOffset)
             .zIndex(1)
-
+            
             if let playbackError {
                 playbackErrorView(playbackError)
                     .padding(.horizontal, 28)
                     .zIndex(2)
             }
-
+            
             backButton
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .zIndex(3)
+            
+            noteButton
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 .zIndex(3)
         }
         .frame(width: size.width, height: size.height)
     }
-
+    
     private var studyFeedBackground: some View {
         ZStack {
             LinearGradient(
@@ -218,7 +236,7 @@ struct StudyFeedView: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-
+            
             LinearGradient(
                 colors: [
                     TikTokTheme.pink.opacity(0.22),
@@ -231,7 +249,7 @@ struct StudyFeedView: View {
             .blendMode(.screen)
         }
     }
-
+    
     private func feedPageSurface<Content: View>(
         in size: CGSize,
         @ViewBuilder content: () -> Content
@@ -240,11 +258,11 @@ struct StudyFeedView: View {
         let verticalInset: CGFloat = size.height > 700 ? 12 : 8
         let cornerRadius = feedSurfaceCornerRadius(for: size)
         let innerCornerRadius = max(cornerRadius - 4, cornerRadius * 0.9)
-
+        
         return ZStack {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(Color.black.opacity(0.82))
-
+            
             content()
                 .clipShape(RoundedRectangle(cornerRadius: innerCornerRadius, style: .continuous))
         }
@@ -269,12 +287,12 @@ struct StudyFeedView: View {
         )
         .shadow(color: Color.black.opacity(0.36), radius: 24, x: 0, y: 14)
     }
-
+    
     private func feedSurfaceCornerRadius(for size: CGSize) -> CGFloat {
         let minSide = min(size.width, size.height)
         return max(36, minSide * 0.12)
     }
-
+    
     private func feedSwipeGesture(in size: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 28)
             .onChanged { value in
@@ -292,12 +310,12 @@ struct StudyFeedView: View {
                     }
                     return
                 }
-
+                
                 let threshold = size.height * 0.22
                 let predictedThreshold = size.height * 0.36
                 let shouldPageUp = value.translation.height <= -threshold || value.predictedEndTranslation.height <= -predictedThreshold
                 let shouldPageDown = value.translation.height >= threshold || value.predictedEndTranslation.height >= predictedThreshold
-
+                
                 if shouldPageUp {
                     finishVirtualPageSwipe(.up, height: size.height)
                 } else if shouldPageDown {
@@ -309,20 +327,20 @@ struct StudyFeedView: View {
                 }
             }
     }
-
+    
     private enum FeedSwipeDirection {
         case up
         case down
     }
-
+    
     private func finishVirtualPageSwipe(_ direction: FeedSwipeDirection, height: CGFloat) {
         isPaging = true
         let targetOffset = direction == .up ? -height : height
-
+        
         withAnimation(.smooth(duration: 0.24)) {
             swipeOffset = targetOffset
         }
-
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
             var transaction = Transaction()
             transaction.disablesAnimations = true
@@ -334,15 +352,15 @@ struct StudyFeedView: View {
             player?.play()
         }
     }
-
+    
     private func clamped(_ value: CGFloat, min minimum: CGFloat, max maximum: CGFloat) -> CGFloat {
         Swift.min(Swift.max(value, minimum), maximum)
     }
-
+    
     private func thumbnailPage(in size: CGSize) -> some View {
         ZStack {
             Color(red: 0.025, green: 0.03, blue: 0.045)
-
+            
             if let thumbnailImage {
                 Image(uiImage: thumbnailImage)
                     .resizable()
@@ -354,7 +372,7 @@ struct StudyFeedView: View {
                     .font(.system(size: 56, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.34))
             }
-
+            
             LinearGradient(
                 colors: [
                     .black.opacity(0.18),
@@ -368,14 +386,14 @@ struct StudyFeedView: View {
         .background(Color(red: 0.025, green: 0.03, blue: 0.045))
         .clipped()
     }
-
+    
     private var thumbnailImage: UIImage? {
         guard let data = video.thumbnailData else { return nil }
         return UIImage(data: data)
     }
-
+    
     // MARK: - Player
-
+    
     private func playerContainer(gravity: AVLayerVideoGravity) -> some View {
         Group {
             if video.type == .local {
@@ -388,7 +406,7 @@ struct StudyFeedView: View {
         }
         .background(Color.black)
     }
-
+    
     private func localPlayerView(gravity: AVLayerVideoGravity) -> some View {
         LocalAVPlayerControllerView(
             player: player,
@@ -399,13 +417,14 @@ struct StudyFeedView: View {
             setupPlayer()
         }
     }
-
+    
     private func webPlayerView(descriptor: WebPlayerDescriptor) -> some View {
         WebViewPlayerFixed(
             descriptor: descriptor,
             startTime: webPlaybackStartTime ?? Self.validPlaybackTime(video.lastPlaybackTime) ?? 0,
             reloadID: webPlayerReloadID,
             isStopped: shouldStopWebPlayback,
+            pauseToken: webPauseToken,
             onProgress: updateWebPlaybackProgress,
             onComplete: completePlayback,
             onError: { message in
@@ -415,12 +434,15 @@ struct StudyFeedView: View {
         .onAppear {
             playbackError = nil
             if webPlaybackStartTime == nil {
-                webPlaybackStartTime = Self.validPlaybackTime(video.lastPlaybackTime) ?? 0
+                webPlaybackStartTime = Self.validPlaybackTime(video.requestedPlaybackTime)
+                ?? Self.validPlaybackTime(video.lastPlaybackTime)
+                ?? 0
+                video.requestedPlaybackTime = nil
             }
         }
         .background(Color.black)
     }
-
+    
     private func setupPlayer() {
         guard video.type == .local else { return }
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -429,7 +451,7 @@ struct StudyFeedView: View {
             playbackError = "ローカル動画ファイルが見つかりません"
             return
         }
-
+        
         playbackError = nil
         let activePlayer: AVPlayer
         if let player {
@@ -439,14 +461,15 @@ struct StudyFeedView: View {
             player = newPlayer
             activePlayer = newPlayer
         }
-
-        if let lastTime = Self.validPlaybackTime(video.lastPlaybackTime) {
+        
+        if let lastTime = Self.validPlaybackTime(video.requestedPlaybackTime) ?? Self.validPlaybackTime(video.lastPlaybackTime) {
             let cmTime = CMTime(seconds: lastTime, preferredTimescale: 600)
             activePlayer.seek(to: cmTime)
+            video.requestedPlaybackTime = nil
         }
-
+        
         observePlaybackStatus(for: activePlayer)
-
+        
         if endObserver == nil {
             let observer = NotificationCenter.default.addObserver(
                 forName: .AVPlayerItemDidPlayToEndTime,
@@ -459,7 +482,7 @@ struct StudyFeedView: View {
         }
         activePlayer.play()
     }
-
+    
     private func observePlaybackStatus(for player: AVPlayer) {
         itemStatusObserver?.invalidate()
         itemStatusObserver = player.currentItem?.observe(\.status, options: [.initial, .new]) { item, _ in
@@ -481,21 +504,21 @@ struct StudyFeedView: View {
             }
         }
     }
-
+    
     private func playbackFailureMessage(for item: AVPlayerItem) -> String {
         guard let error = item.error as NSError? else {
             return "ローカル動画を再生できません"
         }
-
+        
         var details = [
             error.localizedDescription,
             "\(error.domain) \(error.code)"
         ]
-
+        
         if let underlyingError = error.userInfo[NSUnderlyingErrorKey] as? NSError {
             details.append("\(underlyingError.domain) \(underlyingError.code)")
         }
-
+        
         if let event = item.errorLog()?.events.last {
             let status = event.errorStatusCode
             let comment = event.errorComment ?? event.errorDomain
@@ -503,10 +526,10 @@ struct StudyFeedView: View {
                 details.append("\(comment) \(status)")
             }
         }
-
+        
         return details.joined(separator: "\n")
     }
-
+    
     private func stopPlayer() {
         if let player {
             if let currentTime = Self.validPlaybackTime(player.currentTime().seconds) {
@@ -522,18 +545,62 @@ struct StudyFeedView: View {
         endObserver = nil
         itemStatusObserver = nil
     }
-
+    
     // MARK: - Common
-
+    
     private var backButton: some View {
         FrictionBackButton(
             onDismiss: finishSessionAndDismiss,
             allowsImmediateDismiss: showingCompletionScreen
         )
-            .padding(.leading, 20)
-            .padding(.top, 54)
+        .padding(.leading, 20)
+        .padding(.top, 54)
     }
-
+    
+    private var noteButton: some View {
+        Button {
+            pauseForNotes()
+            showingNotes = true
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "note.text.badge.plus")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 48, height: 48)
+                    .background(.black.opacity(0.34), in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(.white.opacity(0.18), lineWidth: 1)
+                    )
+                
+                if noteCount > 0 {
+                    Text("\(min(noteCount, 99))")
+                        .font(.caption2.monospacedDigit().weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(TikTokTheme.pink, in: Capsule())
+                        .offset(x: 4, y: -3)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(.trailing, 20)
+        .padding(.top, 54)
+        .accessibilityLabel("メモ")
+        .sheet(isPresented: $showingNotes) {
+            VideoNotesSheet(
+                video: video,
+                currentTime: currentPlaybackTime,
+                isInStudyMode: true,
+                onJump: seekToTimestamp
+            )
+            .presentationDetents([.fraction(0.50), .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(TikTokTheme.background)
+        }
+    }
+    
     private var completionScreen: some View {
         VStack(spacing: 18) {
             ZStack {
@@ -544,7 +611,7 @@ struct StudyFeedView: View {
                     .font(.system(size: 32, weight: .bold))
                     .foregroundStyle(TikTokTheme.green)
             }
-
+            
             VStack(spacing: 6) {
                 Text("見終わりました")
                     .font(.title2.weight(.bold))
@@ -555,7 +622,7 @@ struct StudyFeedView: View {
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
             }
-
+            
             HStack(spacing: 8) {
                 Image(systemName: "sparkles")
                     .font(.caption.weight(.bold))
@@ -569,7 +636,7 @@ struct StudyFeedView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(TikTokTheme.green.opacity(0.14), in: Capsule())
-
+            
             VStack(spacing: 10) {
                 Button {
                     replayVideo()
@@ -582,7 +649,7 @@ struct StudyFeedView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.white)
                 .background(TikTokTheme.pink, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-
+                
                 Button {
                     finishSessionAndDismiss()
                 } label: {
@@ -604,7 +671,7 @@ struct StudyFeedView: View {
         )
         .shadow(color: .black.opacity(0.38), radius: 28, x: 0, y: 18)
     }
-
+    
     private var webPlayerDescriptor: WebPlayerDescriptor? {
         switch video.type {
         case .youtube:
@@ -618,30 +685,65 @@ struct StudyFeedView: View {
             return nil
         }
     }
-
+    
+    private var noteCount: Int {
+        video.notes?.count ?? 0
+    }
+    
+    private var currentPlaybackTime: TimeInterval? {
+        if let player,
+           let currentTime = Self.validPlaybackTime(player.currentTime().seconds) {
+            return currentTime
+        }
+        return Self.validPlaybackTime(video.lastPlaybackTime) ?? webPlaybackStartTime
+    }
+    
+    private func pauseForNotes() {
+        if video.type == .local {
+            player?.pause()
+        } else {
+            webPauseToken = UUID()
+        }
+    }
+    
+    private func seekToTimestamp(_ timestamp: TimeInterval) {
+        let safeTimestamp = max(0, timestamp)
+        shouldStopWebPlayback = false
+        
+        if video.type == .local {
+            let cmTime = CMTime(seconds: safeTimestamp, preferredTimescale: 600)
+            player?.seek(to: cmTime) { _ in
+                player?.play()
+            }
+        } else {
+            webPlaybackStartTime = safeTimestamp
+            webPlayerReloadID = UUID()
+        }
+    }
+    
     private func finishSessionAndDismiss() {
         guard !isDismissing else { return }
         cancelCloseReminderNotifications()
-
+        
         let duration = Date().timeIntervalSince(sessionStartTime)
         let session = StudySession(startTime: sessionStartTime, duration: duration)
         modelContext.insert(session)
-
+        
         player?.pause()
         shouldStopWebPlayback = true
         persistCurrentPlaybackPosition()
         video.watchedDuration += duration
         try? modelContext.save()
-
+        
         withAnimation(.smooth(duration: 0.22)) {
             isDismissing = true
         }
-
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
             dismiss()
         }
     }
-
+    
     private func completePlayback() {
         guard !showingCompletionScreen else { return }
         if video.duration > 0 {
@@ -655,7 +757,7 @@ struct StudyFeedView: View {
             showingCompletionScreen = true
         }
     }
-
+    
     private func replayVideo() {
         showingCompletionScreen = false
         shouldStopWebPlayback = false
@@ -669,7 +771,7 @@ struct StudyFeedView: View {
             webPlayerReloadID = UUID()
         }
     }
-
+    
     private func playbackErrorView(_ message: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -683,7 +785,7 @@ struct StudyFeedView: View {
         .padding(18)
         .background(Color.black.opacity(0.58), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
-
+    
     private static func makeLocalPlayer(for video: VideoItem) -> AVPlayer? {
         guard video.type == .local else { return nil }
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
@@ -691,25 +793,25 @@ struct StudyFeedView: View {
         }
         let fileURL = documentsDirectory.appendingPathComponent(video.urlString)
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
-
+        
         let player = AVPlayer(url: fileURL)
-        if let lastTime = validPlaybackTime(video.lastPlaybackTime) {
+        if let lastTime = validPlaybackTime(video.requestedPlaybackTime) ?? validPlaybackTime(video.lastPlaybackTime) {
             player.seek(to: CMTime(seconds: lastTime, preferredTimescale: 600))
         }
         return player
     }
-
+    
     private static func validPlaybackTime(_ seconds: Double?) -> Double? {
         guard let seconds, seconds.isFinite, seconds >= 0 else { return nil }
         return seconds
     }
-
-    #if canImport(UIKit)
+    
+#if canImport(UIKit)
     private func enableStudyFeedOrientation() {
         AppOrientation.shared.supportedOrientations = [.portrait, .landscapeLeft, .landscapeRight]
         refreshSupportedOrientations()
     }
-
+    
     private func restorePortraitOrientation() {
         AppOrientation.shared.supportedOrientations = .portrait
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
@@ -717,20 +819,20 @@ struct StudyFeedView: View {
         }
         refreshSupportedOrientations()
     }
-
+    
     private func refreshSupportedOrientations() {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         for scene in scenes {
             scene.windows.first { $0.isKeyWindow }?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
         }
     }
-    #else
+#else
     private func enableStudyFeedOrientation() {}
     private func restorePortraitOrientation() {}
-    #endif
-
+#endif
+    
     // MARK: - Close Reminders
-
+    
     private func handleScenePhaseChange(from oldPhase: ScenePhase, to newPhase: ScenePhase) {
         switch newPhase {
         case .active:
@@ -748,18 +850,18 @@ struct StudyFeedView: View {
             break
         }
     }
-
+    
     private var closeReminderNotificationIDs: [String] {
         ["immediate", "5min", "10min"].map {
             "study-close-reminder-\(video.id.uuidString)-\($0)"
         }
     }
-
+    
     private func requestStudyReminderAuthorization() {
         guard StudyPreferences.closeRemindersEnabled else { return }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
     }
-
+    
     private func scheduleCloseReminderNotificationsIfNeeded() {
         guard !didScheduleCloseReminders else { return }
         guard StudyPreferences.closeRemindersEnabled else { return }
@@ -767,24 +869,24 @@ struct StudyFeedView: View {
             debugCloseReminderLog("daily close reminder limit reached")
             return
         }
-
+        
         let elapsed = Date().timeIntervalSince(sessionStartTime)
         guard elapsed >= 20 else { return }
-
+        
         didScheduleCloseReminders = true
         persistCurrentPlaybackPosition()
-
+        
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
                 debugCloseReminderLog("notification authorization unavailable: \(settings.authorizationStatus.rawValue)")
                 return
             }
-
+            
             center.removePendingNotificationRequests(withIdentifiers: closeReminderNotificationIDs)
             debugCloseReminderLog("scheduling close reminders after \(Int(elapsed))s")
             StudyPreferences.recordCloseReminderEvent()
-
+            
             let title = video.title.trimmingCharacters(in: .whitespacesAndNewlines)
             let displayTitle = title.isEmpty ? "学習動画" : title
             let reminders: [(id: String, delay: TimeInterval?, body: String)] = [
@@ -804,14 +906,14 @@ struct StudyFeedView: View {
                     "10分経ちました。短く再開して流れを戻しましょう。"
                 )
             ]
-
+            
             for reminder in reminders {
                 let content = UNMutableNotificationContent()
                 content.title = displayTitle
                 content.body = reminder.body
                 content.sound = .default
                 content.categoryIdentifier = "study-close-reminder"
-
+                
                 let trigger = reminder.delay.map {
                     UNTimeIntervalNotificationTrigger(timeInterval: $0, repeats: false)
                 }
@@ -826,7 +928,7 @@ struct StudyFeedView: View {
                     }
                 }
             }
-
+            
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 center.getPendingNotificationRequests { requests in
                     let pendingIDs = requests
@@ -837,7 +939,7 @@ struct StudyFeedView: View {
             }
         }
     }
-
+    
     private func persistCurrentPlaybackPosition() {
         if let player,
            let currentTime = Self.validPlaybackTime(player.currentTime().seconds) {
@@ -846,7 +948,7 @@ struct StudyFeedView: View {
         video.lastWatchedAt = Date()
         try? modelContext.save()
     }
-
+    
     private func updateWebPlaybackProgress(currentTime: Double, duration: Double?) {
         guard !showingCompletionScreen else { return }
         if let currentTime = Self.validPlaybackTime(currentTime) {
@@ -858,24 +960,24 @@ struct StudyFeedView: View {
         video.lastWatchedAt = Date()
         try? modelContext.save()
     }
-
+    
     private func cancelCloseReminderNotifications() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: closeReminderNotificationIDs)
     }
-
+    
 }
 
 private func debugCloseReminderLog(_ message: String) {
-    #if DEBUG
+#if DEBUG
     print("[StudyCloseReminder] \(message)")
-    #endif
+#endif
 }
 
 private struct LocalAVPlayerControllerView: UIViewControllerRepresentable {
     var player: AVPlayer?
     var videoGravity: AVLayerVideoGravity
     var autoPlay: Bool
-
+    
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let controller = AVPlayerViewController()
         controller.player = player
@@ -893,7 +995,7 @@ private struct LocalAVPlayerControllerView: UIViewControllerRepresentable {
         }
         return controller
     }
-
+    
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
         if uiViewController.player !== player {
             uiViewController.player = player
@@ -910,11 +1012,11 @@ private struct WebPlayerDescriptor: Equatable {
         case youtube
         case vimeo
     }
-
+    
     var provider: Provider
     var videoID: String
     var sourceURLString: String?
-
+    
     var key: String {
         "\(provider.rawValue)-\(videoID)-\(sourceURLString ?? "")"
     }
@@ -925,12 +1027,13 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
     var startTime: Double
     var reloadID: UUID
     var isStopped: Bool
+    var pauseToken: UUID
     var onProgress: (_ currentTime: Double, _ duration: Double?) -> Void
     var onComplete: () -> Void
     var onError: (String) -> Void
-
+    
     private static var webViewCache: [String: WKWebView] = [:]
-
+    
     func makeCoordinator() -> Coordinator {
         Coordinator(
             onProgress: onProgress,
@@ -938,28 +1041,28 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
             onError: onError
         )
     }
-
+    
     func makeUIView(context: Context) -> WKWebView {
         let webView = Self.webView(for: descriptor.key)
         configure(webView: webView, context: context)
         return webView
     }
-
+    
     func updateUIView(_ uiView: WKWebView, context: Context) {
         configure(webView: uiView, context: context)
     }
-
+    
     static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
         coordinator.stopPlayback(in: uiView)
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: "selovaPlayer")
         uiView.navigationDelegate = nil
     }
-
+    
     private func configure(webView: WKWebView, context: Context) {
         context.coordinator.onProgress = onProgress
         context.coordinator.onComplete = onComplete
         context.coordinator.onError = onError
-
+        
         webView.navigationDelegate = context.coordinator
         webView.scrollView.isScrollEnabled = false
         webView.backgroundColor = .black
@@ -967,30 +1070,31 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
         webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "selovaPlayer")
         webView.configuration.userContentController.add(context.coordinator, name: "selovaPlayer")
-
+        
         if isStopped {
             context.coordinator.stopPlayback(in: webView)
             return
         }
-
+        
         context.coordinator.didStopPlayback = false
+        context.coordinator.pausePlaybackIfNeeded(in: webView, token: pauseToken)
         let nextKey = "\(descriptor.key)-\(reloadID.uuidString)-\(Int(startTime.rounded()))"
         if webView.selovaLoadedKey != nextKey {
             webView.selovaLoadedKey = nextKey
             webView.loadHTMLString(playerHTML, baseURL: URL(string: "https://selova.local"))
         }
     }
-
+    
     private static func webView(for key: String) -> WKWebView {
         if let cached = webViewCache[key] {
             return cached
         }
-
+        
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
-
+        
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.scrollView.isScrollEnabled = false
         webView.backgroundColor = .black
@@ -999,7 +1103,7 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
         webViewCache[key] = webView
         return webView
     }
-
+    
     private var playerHTML: String {
         switch descriptor.provider {
         case .youtube:
@@ -1008,7 +1112,7 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
             return vimeoHTML(videoURLString: descriptor.sourceURLString ?? "", startTime: startTime)
         }
     }
-
+    
     private func youtubeHTML(videoID: String, startTime: Double) -> String {
         let escapedID = videoID.javascriptEscaped
         let start = max(0, Int(startTime.rounded(.down)))
@@ -1031,7 +1135,7 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
         let player;
         let progressTimer;
         let lastReportedSecond = -1;
-
+        
         function onYouTubeIframeAPIReady() {
           player = new YT.Player('player', {
             videoId: '\(escapedID)',
@@ -1051,8 +1155,9 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
             }
           });
         }
-
+        
         function onReady() {
+          window.selovaPlayerInstance = player;
           if (\(start) > 0) {
             player.seekTo(\(start), true);
           }
@@ -1060,7 +1165,7 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
           progressTimer = setInterval(reportProgress, 1000);
           reportProgress();
         }
-
+        
         function onStateChange(event) {
           if (event.data === YT.PlayerState.ENDED) {
             reportProgress();
@@ -1069,7 +1174,7 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
             reportProgress();
           }
         }
-
+        
         function reportProgress() {
           if (!player || !player.getCurrentTime) return;
           const currentTime = Number(player.getCurrentTime()) || 0;
@@ -1085,7 +1190,7 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
         </html>
         """
     }
-
+    
     private func vimeoHTML(videoURLString: String, startTime: Double) -> String {
         let escapedURL = videoURLString.javascriptEscaped
         let start = max(0, startTime)
@@ -1116,8 +1221,9 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
           portrait: false,
           dnt: true
         });
+        window.selovaPlayerInstance = player;
         const startTime = \(start);
-
+        
         player.ready().then(function() {
           if (startTime > 0) {
             return player.setCurrentTime(startTime).catch(function(){});
@@ -1127,7 +1233,7 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
         }).catch(function(error) {
           postError(error);
         });
-
+        
         player.on('timeupdate', function(data) {
           post({
             type: 'progress',
@@ -1135,7 +1241,7 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
             duration: data.duration || 0
           });
         });
-
+        
         player.on('ended', function(data) {
           post({
             type: 'progress',
@@ -1144,11 +1250,11 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
           });
           post({ type: 'ended' });
         });
-
+        
         player.on('error', function(error) {
           postError(error);
         });
-
+        
         function postError(error) {
           post({
             type: 'error',
@@ -1162,14 +1268,15 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
         </html>
         """
     }
-
+    
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var onProgress: (_ currentTime: Double, _ duration: Double?) -> Void
         var onComplete: () -> Void
         var onError: (String) -> Void
         var loadedKey: String?
         var didStopPlayback = false
-
+        var lastPauseToken: UUID?
+        
         init(
             onProgress: @escaping (_ currentTime: Double, _ duration: Double?) -> Void,
             onComplete: @escaping () -> Void,
@@ -1179,7 +1286,7 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
             self.onComplete = onComplete
             self.onError = onError
         }
-
+        
         func stopPlayback(in webView: WKWebView) {
             guard !didStopPlayback else { return }
             didStopPlayback = true
@@ -1192,13 +1299,29 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
             )
             webView.loadHTMLString("<!doctype html><html><body style='margin:0;background:#000'></body></html>", baseURL: nil)
         }
-
+        
+        func pausePlaybackIfNeeded(in webView: WKWebView, token: UUID) {
+            guard lastPauseToken != token else { return }
+            lastPauseToken = token
+            webView.evaluateJavaScript(
+                """
+                (function() {
+                  const player = window.selovaPlayerInstance;
+                  if (player && player.pauseVideo) { player.pauseVideo(); }
+                  if (player && player.pause) { player.pause(); }
+                  document.querySelectorAll('video').forEach(v => v.pause());
+                })();
+                """,
+                completionHandler: nil
+            )
+        }
+        
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard let body = message.body as? [String: Any],
                   let type = body["type"] as? String else {
                 return
             }
-
+            
             switch type {
             case "progress":
                 let currentTime = doubleValue(from: body["currentTime"]) ?? 0
@@ -1215,12 +1338,12 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
                 break
             }
         }
-
+        
         private func videoErrorMessage(provider: String?, name: String?, message: String?) -> String {
             let providerName = provider?.lowercased()
             let errorName = name?.lowercased()
             let errorMessage = message?.lowercased() ?? ""
-
+            
             if providerName == "vimeo" {
                 if errorName == "privacyerror" || errorMessage.contains("privacy") {
                     return "Vimeo の埋め込み権限がありません。`h=` 付きURLか、埋め込み許可された動画を使ってください。"
@@ -1233,10 +1356,10 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
                 }
                 return "Vimeo を読み込めませんでした。"
             }
-
+            
             return "動画ページを読み込めません"
         }
-
+        
         private func doubleValue(from value: Any?) -> Double? {
             if let value = value as? Double {
                 return value
@@ -1249,15 +1372,15 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
             }
             return nil
         }
-
+        
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             report(error)
         }
-
+        
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             report(error)
         }
-
+        
         private func report(_ error: Error) {
             let nsError = error as NSError
             guard nsError.code != NSURLErrorCancelled else { return }
@@ -1278,7 +1401,7 @@ private extension String {
 
 private extension WKWebView {
     private static var selovaLoadedKeyAssociationKey: UInt8 = 0
-
+    
     var selovaLoadedKey: String? {
         get {
             objc_getAssociatedObject(self, &Self.selovaLoadedKeyAssociationKey) as? String

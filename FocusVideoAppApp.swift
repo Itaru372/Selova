@@ -38,7 +38,7 @@ struct FocusVideoAppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .modelContainer(for: [FolderItem.self, VideoItem.self, StudySession.self])
+                .modelContainer(for: [FolderItem.self, VideoItem.self, VideoNote.self, StudySession.self])
         }
     }
 }
