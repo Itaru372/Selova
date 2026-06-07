@@ -27,7 +27,8 @@ struct AddVideoSheet: View {
     @Environment(\.modelContext) private var modelContext
 
     @Binding var activeVideo: VideoItem?
-    var onAddNow: (() -> Void)?
+    var initialFolder: FolderItem? = nil
+    var onAddNow: (() -> Void)? = nil
 
     @State private var selectedType: VideoType = .local
     @State private var urlString = ""
@@ -40,6 +41,7 @@ struct AddVideoSheet: View {
     @State private var showingFileImporter = false
     @State private var isFetchingTitle = false
     @State private var localImportMessage: String?
+    @State private var remoteImportMessage: String?
 
     @Query(sort: \FolderItem.createdAt) private var allFolders: [FolderItem]
     @Query(sort: \VideoItem.createdAt) private var allVideos: [VideoItem]
@@ -124,6 +126,12 @@ struct AddVideoSheet: View {
                             .buttonStyle(.plain)
                             .disabled(urlString.isEmpty || isFetchingTitle)
                         }
+
+                        if let remoteImportMessage {
+                            Label(remoteImportMessage, systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundColor(TikTokTheme.pink)
+                        }
                     }
 
                     TextField("タイトル", text: $title)
@@ -177,6 +185,7 @@ struct AddVideoSheet: View {
                             await importLocalVideo(from: file.url)
                         }
                     } catch {
+                        localImportMessage = "写真ライブラリから動画を読み込めませんでした"
                         print("Failed to load video: \(error)")
                     }
                 }
@@ -187,7 +196,13 @@ struct AddVideoSheet: View {
                 duration = 0
                 thumbnailData = nil
                 localImportMessage = nil
+                remoteImportMessage = nil
                 selectedPhotoItem = nil
+            }
+            .onAppear {
+                if selectedFolder == nil {
+                    selectedFolder = initialFolder
+                }
             }
             .fullScreenCover(isPresented: $showingFileImporter) {
                 LocalVideoDocumentPicker { fileURL in
@@ -317,6 +332,7 @@ struct AddVideoSheet: View {
         urlString = ""
         title = ""
         thumbnailData = nil
+        remoteImportMessage = nil
     }
 
     private var normalizedTitle: String {
@@ -337,8 +353,14 @@ struct AddVideoSheet: View {
     }
 
     private func fetchTitle() async {
-        guard URL(string: urlString) != nil else { return }
+        let trimmedURL = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedURL.isEmpty else {
+            remoteImportMessage = "URLを入力してください"
+            return
+        }
+
         isFetchingTitle = true
+        remoteImportMessage = nil
         defer { isFetchingTitle = false }
 
         do {
@@ -351,7 +373,7 @@ struct AddVideoSheet: View {
                 return
             }
             components.queryItems = [
-                URLQueryItem(name: "url", value: urlString),
+                URLQueryItem(name: "url", value: trimmedURL),
                 URLQueryItem(name: "format", value: "json")
             ]
 
@@ -375,6 +397,7 @@ struct AddVideoSheet: View {
                 }
             }
         } catch {
+            remoteImportMessage = "タイトルを取得できませんでした。URLを確認してください"
             print("Failed to fetch title: \(error)")
         }
     }
@@ -403,6 +426,7 @@ struct AddVideoSheet: View {
             title = safeBaseName
             duration = await localVideoDuration(for: destinationURL)
             localImportMessage = isPlayable ? nil : "この動画形式はiOS標準プレイヤーで再生できない可能性があります"
+            remoteImportMessage = nil
             thumbnailData = nil
             generateThumbnail(for: destinationURL)
         } catch {

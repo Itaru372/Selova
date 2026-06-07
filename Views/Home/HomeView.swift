@@ -4,6 +4,7 @@ import SwiftData
 struct HomeView: View {
     @AppStorage("hasLaunchedBefore") private var hasLaunchedBefore = false
     @Binding var activeVideo: VideoItem?
+    var onOpenSettings: () -> Void
 
     @Query private var studySessions: [StudySession]
 
@@ -18,11 +19,19 @@ struct HomeView: View {
                 TimeBasedBackgroundView()
 
                 if !hasLaunchedBefore {
-                    FirstTimeHomeView(activeVideo: $activeVideo, onStart: {
-                        hasLaunchedBefore = true
-                    })
+                    FirstTimeHomeView(
+                        activeVideo: $activeVideo,
+                        onOpenSettings: onOpenSettings,
+                        onStart: {
+                            hasLaunchedBefore = true
+                        }
+                    )
                 } else {
-                    ReturningHomeView(activeVideo: $activeVideo, totalStudyTime: totalStudyTime)
+                    ReturningHomeView(
+                        activeVideo: $activeVideo,
+                        totalStudyTime: totalStudyTime,
+                        onOpenSettings: onOpenSettings
+                    )
                 }
             }
             .navigationTitle("Home")
@@ -34,6 +43,7 @@ struct HomeView: View {
 
 struct FirstTimeHomeView: View {
     @Binding var activeVideo: VideoItem?
+    var onOpenSettings: () -> Void
     var onStart: () -> Void
 
     @State private var showingAddSheet = false
@@ -41,6 +51,21 @@ struct FirstTimeHomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button(action: onOpenSettings) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.headline)
+                        .foregroundColor(TikTokTheme.secondaryText)
+                        .frame(width: 44, height: 44)
+                        .background(TikTokTheme.panelStrong, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("設定")
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 18)
+
             Spacer()
 
             VStack(spacing: 12) {
@@ -114,4 +139,26 @@ struct FirstTimeHomeView: View {
 private enum FirstTimeAddDestination {
     case startNow
     case watchLater
+}
+
+#Preview("HomeView") {
+    HomeViewPreviewHost()
+}
+
+private struct HomeViewPreviewHost: View {
+    @State private var activeVideo: VideoItem?
+
+    private var previewContainer: ModelContainer {
+        let schema = Schema([FolderItem.self, VideoItem.self, StudySession.self])
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        return try! ModelContainer(for: schema, configurations: [configuration])
+    }
+
+    var body: some View {
+        HomeView(
+            activeVideo: $activeVideo,
+            onOpenSettings: {}
+        )
+        .modelContainer(previewContainer)
+    }
 }

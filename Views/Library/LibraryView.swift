@@ -45,6 +45,15 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             List {
+                if !isSearching && visibleFolders.isEmpty && visibleVideos.isEmpty {
+                    ContentUnavailableView(
+                        "ライブラリは空です",
+                        systemImage: "folder.badge.plus",
+                        description: Text("ホームの「今すぐ学習する」または「後で見る」から動画を追加できます")
+                    )
+                    .listRowBackground(Color.clear)
+                }
+
                 if isSearching && visibleFolders.isEmpty && visibleVideos.isEmpty {
                     ContentUnavailableView("見つかりません", systemImage: "magnifyingglass", description: Text("別のキーワードで検索してください"))
                         .listRowBackground(Color.clear)
@@ -135,10 +144,17 @@ struct LibraryView: View {
 
     private var sortMenu: some View {
         Menu {
-            Picker("並び替え", selection: $sortOption) {
-                ForEach(LibrarySortOption.allCases) { option in
-                    Label(option.title, systemImage: option.systemImage)
-                        .tag(option)
+            ForEach(LibrarySortOption.allCases) { option in
+                Button {
+                    sortOption = option
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: option.systemImage)
+                        Text(option.title)
+                        if option == sortOption {
+                            Image(systemName: "checkmark")
+                        }
+                    }
                 }
             }
         } label: {
@@ -175,10 +191,28 @@ struct LibraryView: View {
     }
 
     private func videoRow(_ video: VideoItem) -> some View {
-        Button {
-            activeVideo = video
-        } label: {
-            VideoLibraryRow(video: video, showsFolderPath: isSearching)
+        HStack(spacing: 12) {
+            Button {
+                activeVideo = video
+            } label: {
+                VideoLibraryRow(video: video, showsFolderPath: isSearching)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            Menu {
+                Button {
+                    videoPendingMove = video
+                } label: {
+                    Label("フォルダに移動", systemImage: "folder")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title3)
+                    .foregroundStyle(TikTokTheme.secondaryText)
+                    .frame(width: 36, height: 36)
+            }
+            .accessibilityLabel("動画操作")
         }
         .foregroundColor(TikTokTheme.primaryText)
         .listRowBackground(TikTokTheme.elevatedBackground)
@@ -330,8 +364,7 @@ struct LibraryView: View {
     }
 
     private func progress(for video: VideoItem) -> Double {
-        guard video.duration > 0 else { return 0 }
-        return min(max(lastPlaybackPosition(for: video) / video.duration, 0), 1)
+        StudyProgress.progress(for: video)
     }
 
     private func folderNameIsInvalid(_ name: String, parent: FolderItem?, excluding excludedFolder: FolderItem? = nil) -> Bool {
@@ -382,6 +415,7 @@ struct FolderDetailView: View {
     @State private var folderPendingEdit: FolderItem?
     @State private var editedFolderName = ""
     @State private var videoPendingMove: VideoItem?
+    @State private var showingAddVideo = false
     @State private var searchText = ""
 
     private var isSearching: Bool {
@@ -400,6 +434,15 @@ struct FolderDetailView: View {
 
     var body: some View {
         List {
+            if !isSearching && visibleSubfolders.isEmpty && visibleVideos.isEmpty {
+                ContentUnavailableView(
+                    "このフォルダは空です",
+                    systemImage: "folder",
+                    description: Text("右上の追加ボタンから動画やサブフォルダを追加できます")
+                )
+                .listRowBackground(Color.clear)
+            }
+
             if isSearching && visibleSubfolders.isEmpty && visibleVideos.isEmpty {
                 ContentUnavailableView("見つかりません", systemImage: "magnifyingglass", description: Text("このフォルダ内に一致する項目はありません"))
                     .listRowBackground(Color.clear)
@@ -432,7 +475,14 @@ struct FolderDetailView: View {
         .toolbarBackground(TikTokTheme.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button {
+                    showingAddVideo = true
+                } label: {
+                    Image(systemName: "video.badge.plus")
+                }
+                .accessibilityLabel("このフォルダに動画を追加")
+
                 Button {
                     folderNameError = nil
                     showingAddFolder = true
@@ -481,6 +531,12 @@ struct FolderDetailView: View {
             MoveVideoSheet(video: video)
                 .presentationDetents([.medium])
         }
+        .sheet(isPresented: $showingAddVideo) {
+            AddVideoSheet(
+                activeVideo: $activeVideo,
+                initialFolder: folder
+            )
+        }
     }
 
     private func folderRow(_ child: FolderItem) -> some View {
@@ -504,10 +560,28 @@ struct FolderDetailView: View {
     }
 
     private func videoRow(_ video: VideoItem) -> some View {
-        Button {
-            activeVideo = video
-        } label: {
-            VideoLibraryRow(video: video, showsFolderPath: false)
+        HStack(spacing: 12) {
+            Button {
+                activeVideo = video
+            } label: {
+                VideoLibraryRow(video: video, showsFolderPath: false)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            Menu {
+                Button {
+                    videoPendingMove = video
+                } label: {
+                    Label("フォルダに移動", systemImage: "folder")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title3)
+                    .foregroundStyle(TikTokTheme.secondaryText)
+                    .frame(width: 36, height: 36)
+            }
+            .accessibilityLabel("動画操作")
         }
         .foregroundColor(TikTokTheme.primaryText)
         .listRowBackground(TikTokTheme.elevatedBackground)
@@ -659,8 +733,7 @@ struct FolderDetailView: View {
     }
 
     private func progress(for video: VideoItem) -> Double {
-        guard video.duration > 0 else { return 0 }
-        return min(max(lastPlaybackPosition(for: video) / video.duration, 0), 1)
+        StudyProgress.progress(for: video)
     }
 
     private func folderNameIsInvalid(_ name: String, parent: FolderItem?, excluding excludedFolder: FolderItem? = nil) -> Bool {
@@ -772,7 +845,7 @@ struct VideoLibraryRow: View {
                         Text(folderPath(for: folder))
                     }
 
-                    if video.duration > 0 {
+                    if shouldShowProgressText {
                         Text(progressText)
                     }
                 }
@@ -785,7 +858,11 @@ struct VideoLibraryRow: View {
     }
 
     private var progressText: String {
-        playbackPositionText(for: video)
+        StudyProgress.compactPlaybackPositionText(for: video)
+    }
+
+    private var shouldShowProgressText: Bool {
+        video.duration > 0 || StudyProgress.lastPlaybackPosition(for: video) > 0
     }
 }
 
@@ -816,7 +893,7 @@ enum LibrarySortOption: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .createdNewest:
-            return "clock.badge.plus"
+            return "calendar.badge.clock"
         case .recentlyWatched:
             return "play.circle"
         case .title:
@@ -865,34 +942,4 @@ private func folderContainsVideo(_ folder: FolderItem, videoID: UUID) -> Bool {
     return (folder.children ?? []).contains { child in
         folderContainsVideo(child, videoID: videoID)
     }
-}
-
-private func playbackPositionText(for video: VideoItem) -> String {
-    let playbackTime = lastPlaybackPosition(for: video)
-    guard playbackTime > 0 else {
-        return "未視聴"
-    }
-
-    if video.duration > 0 {
-        return "\(formattedPlaybackPosition(playbackTime))まで / \(formattedPlaybackPosition(video.duration))"
-    }
-    return "\(formattedPlaybackPosition(playbackTime))まで"
-}
-
-private func lastPlaybackPosition(for video: VideoItem) -> TimeInterval {
-    guard let playbackTime = video.lastPlaybackTime, playbackTime.isFinite, playbackTime > 0 else {
-        return 0
-    }
-    return playbackTime
-}
-
-private func formattedPlaybackPosition(_ seconds: TimeInterval) -> String {
-    let totalSeconds = max(0, Int(seconds.rounded(.down)))
-    let minutes = totalSeconds / 60
-    let remainingSeconds = totalSeconds % 60
-
-    if minutes == 0 {
-        return "0:\(String(format: "%02d", remainingSeconds))"
-    }
-    return "\(minutes)分"
 }

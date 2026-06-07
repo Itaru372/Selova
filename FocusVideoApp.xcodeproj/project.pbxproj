@@ -6,26 +6,37 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		8EA1000B2FD2B00100A1000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8E860E282FC59E4C00D2BC2B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8E860E2F2FC59E4C00D2BC2B;
+			remoteInfo = FocusVideoApp;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		8E860E302FC59E4C00D2BC2B /* FocusVideoApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusVideoApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		8EEAC90F2FCFBBD6004F0442 /* FocusVideoApp.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FocusVideoApp.xcodeproj; sourceTree = "<group>"; };
-		8EEEBC6B2FC6FD8E0082886A /* FocusVideoApp.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FocusVideoApp.xcodeproj; sourceTree = "<group>"; };
+		8EA100012FD2B00100A10001 /* FocusVideoAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FocusVideoAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		8E4A7D012FD1A66000B6B9A1 /* Exceptions for repository support files in "FocusVideoApp" target */ = {
+		8E4A7D012FD1A66000B6B9A1 /* Exceptions for "" folder in "FocusVideoApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				AGENTS.md,
 				.xcodebuildmcp/config.yaml,
+				AGENTS.md,
+				FocusVideoAppTests/StudyProgressTests.swift,
+				FocusVideoAppTests/VideoEmbedURLBuilderTests.swift,
 				Memory/.DS_Store,
 				Memory/.obsidian/app.json,
 				Memory/.obsidian/appearance.json,
-				Memory/.obsidian/core-plugins.json,
+				"Memory/.obsidian/core-plugins.json",
 				Memory/.obsidian/workspace.json,
 				Memory/Current.md,
-				Memory/Daily/2026-06-03.md,
-				Memory/Daily/2026-06-04.md,
+				"Memory/Daily/2026-06-03.md",
+				"Memory/Daily/2026-06-04.md",
 				Memory/Decisions.md,
 				Memory/Learned.md,
 				Memory/ProjectMap.md,
@@ -39,14 +50,26 @@
 		8E860E322FC59E4C00D2BC2B = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				8E4A7D012FD1A66000B6B9A1 /* Exceptions for repository support files in "FocusVideoApp" target */,
+				8E4A7D012FD1A66000B6B9A1 /* Exceptions for "" folder in "FocusVideoApp" target */,
 			);
+			sourceTree = "<group>";
+		};
+		8EA100062FD2B00100A10006 /* FocusVideoAppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FocusVideoAppTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		8E860E2D2FC59E4C00D2BC2B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8EA100032FD2B00100A10003 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -60,6 +83,7 @@
 			isa = PBXGroup;
 			children = (
 				8E860E322FC59E4C00D2BC2B,
+				8EA100062FD2B00100A10006 /* FocusVideoAppTests */,
 				8E860E312FC59E4C00D2BC2B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -68,17 +92,8 @@
 			isa = PBXGroup;
 			children = (
 				8E860E302FC59E4C00D2BC2B /* FocusVideoApp.app */,
+				8EA100012FD2B00100A10001 /* FocusVideoAppTests.xctest */,
 			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		8EEAC9122FCFBBD6004F0442 /* Products */ = {
-			isa = PBXGroup;
-			name = Products;
-			sourceTree = "<group>";
-		};
-		8EEEBC6D2FC6FD8E0082886A /* Products */ = {
-			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -107,6 +122,29 @@
 			productReference = 8E860E302FC59E4C00D2BC2B /* FocusVideoApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		8EA100022FD2B00100A10002 /* FocusVideoAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8EA1000F2FD2B00100A1000F /* Build configuration list for PBXNativeTarget "FocusVideoAppTests" */;
+			buildPhases = (
+				8EA100042FD2B00100A10004 /* Sources */,
+				8EA100032FD2B00100A10003 /* Frameworks */,
+				8EA100052FD2B00100A10005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8EA1000C2FD2B00100A1000C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				8EA100062FD2B00100A10006 /* FocusVideoAppTests */,
+			);
+			name = FocusVideoAppTests;
+			packageProductDependencies = (
+			);
+			productName = FocusVideoAppTests;
+			productReference = 8EA100012FD2B00100A10001 /* FocusVideoAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -120,39 +158,42 @@
 					8E860E2F2FC59E4C00D2BC2B = {
 						CreatedOnToolsVersion = 26.5;
 					};
+					8EA100022FD2B00100A10002 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 8E860E2F2FC59E4C00D2BC2B;
+					};
 				};
 			};
 			buildConfigurationList = 8E860E2B2FC59E4C00D2BC2B /* Build configuration list for PBXProject "FocusVideoApp" */;
-			developmentRegion = en;
+			developmentRegion = ja;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
+				ja,
 			);
 			mainGroup = 8E860E272FC59E4C00D2BC2B;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8E860E312FC59E4C00D2BC2B /* Products */;
 			projectDirPath = "";
-			projectReferences = (
-				{
-					ProductGroup = 8EEEBC6D2FC6FD8E0082886A /* Products */;
-					ProjectRef = 8EEEBC6B2FC6FD8E0082886A /* FocusVideoApp.xcodeproj */;
-				},
-				{
-					ProductGroup = 8EEAC9122FCFBBD6004F0442 /* Products */;
-					ProjectRef = 8EEAC90F2FCFBBD6004F0442 /* FocusVideoApp.xcodeproj */;
-				},
-			);
 			projectRoot = "";
 			targets = (
 				8E860E2F2FC59E4C00D2BC2B /* FocusVideoApp */,
+				8EA100022FD2B00100A10002 /* FocusVideoAppTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		8E860E2E2FC59E4C00D2BC2B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8EA100052FD2B00100A10005 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -169,7 +210,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8EA100042FD2B00100A10004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		8EA1000C2FD2B00100A1000C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8E860E2F2FC59E4C00D2BC2B /* FocusVideoApp */;
+			targetProxy = 8EA1000B2FD2B00100A1000B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		8E860E392FC59E4C00D2BC2B /* Debug */ = {
@@ -303,6 +359,9 @@
 				DEVELOPMENT_TEAM = ZXPF859N6C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Selova;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "学習に使うローカル動画を追加するために写真ライブラリを使用します。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -335,6 +394,9 @@
 				DEVELOPMENT_TEAM = ZXPF859N6C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Selova;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "学習に使うローカル動画を追加するために写真ライブラリを使用します。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -357,6 +419,56 @@
 			};
 			name = Release;
 		};
+		8EA1000D2FD2B00100A1000D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZXPF859N6C;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.FocusVideoAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FocusVideoApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FocusVideoApp";
+				TEST_TARGET_NAME = FocusVideoApp;
+			};
+			name = Debug;
+		};
+		8EA1000E2FD2B00100A1000E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZXPF859N6C;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.FocusVideoAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FocusVideoApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FocusVideoApp";
+				TEST_TARGET_NAME = FocusVideoApp;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -374,6 +486,15 @@
 			buildConfigurations = (
 				8E860E3C2FC59E4C00D2BC2B /* Debug */,
 				8E860E3D2FC59E4C00D2BC2B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8EA1000F2FD2B00100A1000F /* Build configuration list for PBXNativeTarget "FocusVideoAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8EA1000D2FD2B00100A1000D /* Debug */,
+				8EA1000E2FD2B00100A1000E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

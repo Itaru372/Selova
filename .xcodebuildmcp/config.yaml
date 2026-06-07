@@ -5,5 +5,29 @@ sessionDefaults:
   configuration: Debug
   simulatorName: iPhone 17
   simulatorId: EE2889C7-8582-46EE-B0BF-2B07F9148264
-  preferXcodebuild: true
   simulatorPlatform: iOS Simulator
+  useLatestOS: true
+  preferXcodebuild: true
+  bundleId: com.Itaru.FocusVideoApp
+sessionDefaultsProfiles:
+  live:
+    projectPath: /Users/okazaki_itaru/Documents/Selova/FocusVideoApp.xcodeproj
+    scheme: FocusVideoApp
+    configuration: Debug
+    simulatorName: iPhone 17
+    simulatorId: EE2889C7-8582-46EE-B0BF-2B07F9148264
+    simulatorPlatform: iOS Simulator
+    useLatestOS: true
+    preferXcodebuild: true
+    bundleId: com.Itaru.FocusVideoApp
+  temp-ee:
+    projectPath: /Users/okazaki_itaru/Documents/Selova/FocusVideoApp.xcodeproj
+    scheme: FocusVideoApp
+    configuration: Debug
+    simulatorName: iPhone 17
+    simulatorId: CA5308D8-7459-429E-8D45-108E0501FD6F
+    simulatorPlatform: iOS Simulator
+    useLatestOS: true
+    preferXcodebuild: true
+    bundleId: com.Itaru.FocusVideoApp
+activeSessionDefaultsProfile: temp-ee

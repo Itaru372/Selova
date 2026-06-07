@@ -23,6 +23,7 @@ struct StudyFeedView: View {
     @State private var isPaging = false
     @State private var isDismissing = false
     @State private var didScheduleCloseReminders = false
+    @State private var showingCompletionScreen = false
 
     init(video: VideoItem) {
         self.video = video
@@ -38,6 +39,12 @@ struct StudyFeedView: View {
             ZStack {
                 studyFeedBackground.ignoresSafeArea()
                 videoPage(in: proxy.size)
+                if showingCompletionScreen {
+                    completionScreen
+                        .padding(.horizontal, proxy.size.width > proxy.size.height ? 64 : 24)
+                        .transition(.scale(scale: 0.96).combined(with: .opacity))
+                        .zIndex(4)
+                }
             }
             .scaleEffect(isDismissing ? 0.965 : 1.0)
             .offset(y: isDismissing ? proxy.size.height * 0.045 : 0)
@@ -49,6 +56,7 @@ struct StudyFeedView: View {
             .toolbar(.hidden, for: .navigationBar)
             .statusBarHidden(true)
             .onAppear {
+                enableStudyFeedOrientation()
                 sessionStartTime = Date()
                 video.lastWatchedAt = Date()
                 setupPlayer()
@@ -56,6 +64,7 @@ struct StudyFeedView: View {
             }
             .onDisappear {
                 stopPlayer()
+                restorePortraitOrientation()
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 handleScenePhaseChange(from: oldPhase, to: newPhase)
@@ -360,8 +369,7 @@ struct StudyFeedView: View {
                 object: activePlayer.currentItem,
                 queue: .main
             ) { _ in
-                activePlayer.seek(to: .zero)
-                activePlayer.play()
+                completePlayback()
             }
             endObserver = observer
         }
@@ -375,7 +383,7 @@ struct StudyFeedView: View {
                 switch item.status {
                 case .readyToPlay:
                     playbackError = nil
-                    if player.rate == 0 {
+                    if player.rate == 0 && !showingCompletionScreen {
                         player.play()
                     }
                 case .failed:
@@ -439,86 +447,65 @@ struct StudyFeedView: View {
             .padding(.top, 54)
     }
 
-    private var embedURL: URL? {
-        switch video.type {
-        case .youtube:
-            return youtubeEmbedURL(from: video.urlString)
-        case .vimeo:
-            return vimeoEmbedURL(from: video.urlString)
-        case .local:
-            return nil
-        }
-    }
+    private var completionScreen: some View {
+        VStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .fill(TikTokTheme.green.opacity(0.18))
+                    .frame(width: 76, height: 76)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(TikTokTheme.green)
+            }
 
-    private func youtubeEmbedURL(from urlString: String) -> URL? {
-        guard let videoId = youtubeVideoID(from: urlString) else { return nil }
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = "www.youtube-nocookie.com"
-        components.path = "/embed/\(videoId)"
-        components.queryItems = [
-            URLQueryItem(name: "playsinline", value: "1"),
-            URLQueryItem(name: "autoplay", value: "1"),
-            URLQueryItem(name: "loop", value: "1"),
-            URLQueryItem(name: "playlist", value: videoId),
-            URLQueryItem(name: "rel", value: "0"),
-            URLQueryItem(name: "modestbranding", value: "1"),
-            URLQueryItem(name: "enablejsapi", value: "1"),
-            URLQueryItem(name: "origin", value: "https://www.youtube.com")
-        ]
-        return components.url
-    }
+            VStack(spacing: 6) {
+                Text("見終わりました")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.white)
+                Text(video.title)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.68))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+            }
 
-    private func youtubeVideoID(from urlString: String) -> String? {
-        let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
+            VStack(spacing: 10) {
+                Button {
+                    replayVideo()
+                } label: {
+                    Label("もう一度見る", systemImage: "arrow.counterclockwise")
+                        .font(.headline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .background(TikTokTheme.pink, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-        if !trimmed.contains("/") && !trimmed.contains("?") && trimmed.count >= 6 {
-            return trimmed
-        }
-
-        let normalized = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
-        guard let url = URL(string: normalized),
-              let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
-            return nil
-        }
-
-        if let id = components.queryItems?.first(where: { $0.name == "v" })?.value,
-           !id.isEmpty {
-            return sanitizedVideoID(id)
-        }
-
-        let host = (components.host ?? url.host ?? "").lowercased()
-        let pathParts = url.pathComponents.filter { $0 != "/" }
-
-        if host.contains("youtu.be") {
-            return pathParts.first.flatMap(sanitizedVideoID)
-        }
-
-        for marker in ["shorts", "embed", "live", "v"] {
-            if let index = pathParts.firstIndex(of: marker),
-               pathParts.indices.contains(index + 1) {
-                return sanitizedVideoID(pathParts[index + 1])
+                Button {
+                    finishSessionAndDismiss()
+                } label: {
+                    Text("ホームへ戻る")
+                        .font(.headline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white.opacity(0.88))
+                .background(.white.opacity(0.13), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
-
-        return nil
+        .padding(24)
+        .background(.black.opacity(0.72), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(.white.opacity(0.16), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.38), radius: 28, x: 0, y: 18)
     }
 
-    private func sanitizedVideoID(_ value: String) -> String? {
-        let id = value
-            .split(separator: "?").first?
-            .split(separator: "&").first
-            .map(String.init) ?? value
-        return id.isEmpty ? nil : id
-    }
-
-    private func vimeoEmbedURL(from urlString: String) -> URL? {
-        if let url = URL(string: urlString) {
-            let videoId = url.lastPathComponent
-            return URL(string: "https://player.vimeo.com/video/\(videoId)?autoplay=1&loop=1&autopause=0")
-        }
-        return nil
+    private var embedURL: URL? {
+        VideoEmbedURLBuilder.embedURL(for: video)
     }
 
     private func finishSessionAndDismiss() {
@@ -544,6 +531,27 @@ struct StudyFeedView: View {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
             dismiss()
+        }
+    }
+
+    private func completePlayback() {
+        guard !showingCompletionScreen else { return }
+        if video.duration > 0 {
+            video.lastPlaybackTime = video.duration
+        }
+        video.lastWatchedAt = Date()
+        try? modelContext.save()
+        player?.pause()
+        withAnimation(.smooth(duration: 0.24)) {
+            showingCompletionScreen = true
+        }
+    }
+
+    private func replayVideo() {
+        showingCompletionScreen = false
+        video.lastPlaybackTime = 0
+        player?.seek(to: .zero) { _ in
+            player?.play()
         }
     }
 
@@ -581,6 +589,31 @@ struct StudyFeedView: View {
         return seconds
     }
 
+    #if canImport(UIKit)
+    private func enableStudyFeedOrientation() {
+        AppOrientation.shared.supportedOrientations = [.portrait, .landscapeLeft, .landscapeRight]
+        refreshSupportedOrientations()
+    }
+
+    private func restorePortraitOrientation() {
+        AppOrientation.shared.supportedOrientations = .portrait
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait))
+        }
+        refreshSupportedOrientations()
+    }
+
+    private func refreshSupportedOrientations() {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        for scene in scenes {
+            scene.windows.first { $0.isKeyWindow }?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+        }
+    }
+    #else
+    private func enableStudyFeedOrientation() {}
+    private func restorePortraitOrientation() {}
+    #endif
+
     // MARK: - Close Reminders
 
     private func handleScenePhaseChange(from oldPhase: ScenePhase, to newPhase: ScenePhase) {
@@ -608,11 +641,18 @@ struct StudyFeedView: View {
     }
 
     private func requestStudyReminderAuthorization() {
+        guard StudyPreferences.closeRemindersEnabled else { return }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
     }
 
     private func scheduleCloseReminderNotificationsIfNeeded() {
         guard !didScheduleCloseReminders else { return }
+        guard StudyPreferences.closeRemindersEnabled else { return }
+        guard StudyPreferences.canScheduleCloseReminderEvent() else {
+            debugCloseReminderLog("daily close reminder limit reached")
+            return
+        }
+
         let elapsed = Date().timeIntervalSince(sessionStartTime)
         guard elapsed >= 20 else { return }
 
@@ -628,6 +668,7 @@ struct StudyFeedView: View {
 
             center.removePendingNotificationRequests(withIdentifiers: closeReminderNotificationIDs)
             debugCloseReminderLog("scheduling close reminders after \(Int(elapsed))s")
+            StudyPreferences.recordCloseReminderEvent()
 
             let title = video.title.trimmingCharacters(in: .whitespacesAndNewlines)
             let displayTitle = title.isEmpty ? "学習動画" : title

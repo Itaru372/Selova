@@ -7,11 +7,12 @@ import UIKit
 struct ReturningHomeView: View {
     @Binding var activeVideo: VideoItem?
     var totalStudyTime: TimeInterval
+    var onOpenSettings: () -> Void
 
     @State private var showingAddSheet = false
     @State private var addDestination: AddDestination = .watchLater
     @Query(sort: \StudySession.startTime, order: .reverse) private var studySessions: [StudySession]
-    @Query(sort: \VideoItem.lastWatchedAt, order: .reverse) private var recentVideos: [VideoItem]
+    @Query(sort: \VideoItem.createdAt, order: .reverse) private var videos: [VideoItem]
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -44,14 +45,15 @@ struct ReturningHomeView: View {
                         .foregroundColor(TikTokTheme.secondaryText)
                 }
                 Spacer()
-                Button(action: {}) {
-                    Image(systemName: "tree.fill")
-                        .font(.caption)
-                        .foregroundColor(TikTokTheme.green)
+                Button(action: onOpenSettings) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(TikTokTheme.secondaryText)
                         .padding(10)
                         .background(Circle().fill(TikTokTheme.panelStrong))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("設定")
             }
             .padding(.top, 24)
             .padding(.horizontal, 24)
@@ -62,7 +64,7 @@ struct ReturningHomeView: View {
             HStack(alignment: .bottom, spacing: 12) {
                 TodayStudyCard(minutes: todayMinutes, deltaMinutes: deltaMinutes)
                 Spacer(minLength: 0)
-                LevelCard(level: level, progress: levelProgress)
+                LevelCard(levelState: levelState, streakDays: streakDays)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
@@ -110,7 +112,7 @@ struct ReturningHomeView: View {
                 title: "後で見る",
                 subtitle: "フォルダを選んで動画を保存",
                 systemImage: "folder.fill",
-                accent: TikTokTheme.cyan,
+                accent: TikTokTheme.readableBlue,
                 background: TikTokTheme.panelStrong
             ) {
                 addDestination = .watchLater
@@ -133,7 +135,7 @@ struct ReturningHomeView: View {
                     .buttonStyle(.plain)
             }
 
-            if recentVideos.isEmpty {
+            if recommendedVideos.isEmpty {
                 VStack(spacing: 6) {
                     Text("おすすめ動画がまだありません")
                         .font(.subheadline)
@@ -148,7 +150,7 @@ struct ReturningHomeView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             } else {
                 VStack(spacing: 10) {
-                    ForEach(recentVideos.prefix(3)) { video in
+                    ForEach(recommendedVideos.prefix(3)) { video in
                         RecommendationRow(video: video) {
                             activeVideo = video
                         }
@@ -157,6 +159,18 @@ struct ReturningHomeView: View {
             }
         }
         .padding(.horizontal, 20)
+    }
+
+    private var recommendedVideos: [VideoItem] {
+        let focusFolderID = recentFocusFolderID
+        return videos.sorted {
+            let lhsScore = StudyProgress.recommendationScore(for: $0, focusFolderID: focusFolderID)
+            let rhsScore = StudyProgress.recommendationScore(for: $1, focusFolderID: focusFolderID)
+            if lhsScore == rhsScore {
+                return ($0.lastWatchedAt ?? $0.createdAt) > ($1.lastWatchedAt ?? $1.createdAt)
+            }
+            return lhsScore > rhsScore
+        }
     }
 
     private var todayMinutes: Int {
@@ -185,32 +199,47 @@ struct ReturningHomeView: View {
             .reduce(0) { $0 + $1.duration }
     }
 
-    private var level: Int {
-        let levelUnit: TimeInterval = 3600
-        return max(1, Int(totalStudyTime / levelUnit) + 1)
+    private var streakDays: Int {
+        let calendar = Calendar.current
+        let activeDays = Set(
+            studySessions
+                .filter { $0.duration > 0 }
+                .map { calendar.startOfDay(for: $0.startTime) }
+        )
+        guard !activeDays.isEmpty else { return 0 }
+
+        let today = calendar.startOfDay(for: Date())
+        let startDay = activeDays.contains(today)
+            ? today
+            : calendar.date(byAdding: .day, value: -1, to: today) ?? today
+
+        var day = startDay
+        var count = 0
+        while activeDays.contains(day) {
+            count += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else {
+                break
+            }
+            day = previous
+        }
+        return count
+    }
+
+    private var levelState: StudyGrowth.LevelState {
+        StudyGrowth.levelState(totalStudyTime: totalStudyTime, streakDays: streakDays)
     }
 
     private var growthAssetName: String {
-        switch level {
-        case 1:
-            return "GrowthSeed"
-        case 2:
-            return "GrowthSprout"
-        case 3:
-            return "GrowthYoungTree"
-        case 4:
-            return "GrowthTree"
-        case 5:
-            return "GrowthFlowerTree"
-        default:
-            return "GrowthForest"
-        }
+        levelState.assetName
     }
 
-    private var levelProgress: Double {
-        let levelUnit: TimeInterval = 3600
-        let remainder = totalStudyTime.truncatingRemainder(dividingBy: levelUnit)
-        return min(max(remainder / levelUnit, 0), 1)
+    private var recentFocusFolderID: UUID? {
+        videos
+            .filter { $0.folder != nil && $0.lastWatchedAt != nil }
+            .sorted { ($0.lastWatchedAt ?? .distantPast) > ($1.lastWatchedAt ?? .distantPast) }
+            .first?
+            .folder?
+            .id
     }
 }
 
@@ -233,8 +262,8 @@ private struct TodayStudyCard: View {
                     .font(.caption2)
                     .foregroundColor(TikTokTheme.secondaryText)
             }
-            Text("\(minutes)分")
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+            Text(primaryText)
+                .font(.system(size: minutes == 0 ? 24 : 30, weight: .bold, design: .rounded))
                 .foregroundColor(TikTokTheme.primaryText)
             Text(deltaText)
                 .font(.caption2)
@@ -247,14 +276,21 @@ private struct TodayStudyCard: View {
     }
 
     private var deltaText: String {
+        guard minutes > 0 else {
+            return "短く始めても大丈夫"
+        }
         let sign = deltaMinutes >= 0 ? "+" : ""
         return "昨日より \(sign)\(deltaMinutes)分"
+    }
+
+    private var primaryText: String {
+        minutes > 0 ? "\(minutes)分" : "まず1本"
     }
 }
 
 private struct LevelCard: View {
-    var level: Int
-    var progress: Double
+    var levelState: StudyGrowth.LevelState
+    var streakDays: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -262,14 +298,22 @@ private struct LevelCard: View {
                 Image(systemName: "leaf.fill")
                     .font(.caption2)
                     .foregroundColor(TikTokTheme.green)
-                Text("Lv. \(level)")
+                Text("Lv. \(levelState.level)")
                     .font(.caption.weight(.semibold))
                     .foregroundColor(TikTokTheme.primaryText)
             }
-            ProgressView(value: progress)
+            ProgressView(value: levelState.progress)
                 .tint(TikTokTheme.cyan)
                 .frame(width: 72)
                 .scaleEffect(x: 1, y: 0.8, anchor: .leading)
+            Text("\(levelState.currentLevelXP)/\(levelState.requiredXP) XP")
+                .font(.caption2.monospacedDigit())
+                .foregroundColor(TikTokTheme.secondaryText)
+            if streakDays > 0 {
+                Text("\(streakDays)日連続")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundColor(TikTokTheme.green)
+            }
         }
         .padding(12)
         .background(TikTokTheme.panelStrong)
@@ -348,13 +392,18 @@ private struct RecommendationRow: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(TikTokTheme.primaryText)
                         .lineLimit(1)
-                    Text(categoryText)
-                        .font(.caption)
-                        .foregroundColor(TikTokTheme.secondaryText)
-                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        SourceTag(text: sourceText)
+                        if let folderName {
+                            Text(folderName)
+                                .font(.caption2)
+                                .foregroundColor(TikTokTheme.mutedText)
+                                .lineLimit(1)
+                        }
+                    }
                     HStack(spacing: 8) {
                         ProgressView(value: progress)
-                            .tint(progress >= 0.9 ? TikTokTheme.pink : TikTokTheme.cyan)
+                            .tint(TikTokTheme.cyan)
                         Text(playbackProgressText)
                             .font(.caption2.monospacedDigit())
                             .foregroundColor(TikTokTheme.mutedText)
@@ -362,9 +411,9 @@ private struct RecommendationRow: View {
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "play.fill")
-                    .font(.caption)
+                    .font(.caption2.weight(.bold))
                     .foregroundColor(.white)
-                    .padding(9)
+                    .padding(7)
                     .background(TikTokTheme.pink)
                     .clipShape(Circle())
             }
@@ -380,30 +429,25 @@ private struct RecommendationRow: View {
     }
 
     private var progress: Double {
-        guard video.duration > 0 else { return 0 }
-        return min(max(lastPlaybackPosition / video.duration, 0), 1)
+        StudyProgress.progress(for: video)
     }
 
     private var playbackProgressText: String {
-        guard lastPlaybackPosition > 0 else { return "未視聴" }
-        guard video.duration > 0 else { return "\(formattedPlaybackPosition(lastPlaybackPosition))まで" }
-        return "\(formattedPlaybackPosition(lastPlaybackPosition))まで / \(formattedPlaybackPosition(video.duration))"
+        StudyProgress.compactPlaybackPositionText(for: video)
     }
 
     private var lastPlaybackPosition: TimeInterval {
-        guard let lastPlaybackTime = video.lastPlaybackTime,
-              lastPlaybackTime.isFinite,
-              lastPlaybackTime > 0
-        else {
-            return 0
-        }
-        return lastPlaybackTime
+        StudyProgress.lastPlaybackPosition(for: video)
     }
 
-    private var categoryText: String {
+    private var folderName: String? {
         if let name = video.folder?.name, !name.isEmpty {
             return name
         }
+        return nil
+    }
+
+    private var sourceText: String {
         switch video.type {
         case .youtube:
             return "YouTube"
@@ -415,36 +459,25 @@ private struct RecommendationRow: View {
     }
 
     private var statusText: String {
-        if progress >= 0.9 {
-            return "あと少し"
-        }
-        if lastPlaybackPosition > 0 {
-            return "続きから"
-        }
-        return "未視聴"
+        StudyProgress.statusText(for: video)
     }
 
     private var durationText: String? {
-        guard video.duration > 0 else { return nil }
-        return formatDuration(video.duration)
+        StudyProgress.durationText(for: video)
     }
+}
 
-    private func formatDuration(_ seconds: TimeInterval) -> String {
-        let totalSeconds = Int(seconds)
-        let minutes = totalSeconds / 60
-        let remainingSeconds = totalSeconds % 60
-        return String(format: "%d:%02d", minutes, remainingSeconds)
-    }
+private struct SourceTag: View {
+    var text: String
 
-    private func formattedPlaybackPosition(_ seconds: TimeInterval) -> String {
-        let totalSeconds = max(0, Int(seconds.rounded(.down)))
-        let minutes = totalSeconds / 60
-        let remainingSeconds = totalSeconds % 60
-
-        if minutes == 0 {
-            return "0:\(String(format: "%02d", remainingSeconds))"
-        }
-        return "\(minutes)分"
+    var body: some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .foregroundColor(TikTokTheme.secondaryText)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(TikTokTheme.border.opacity(0.7))
+            .clipShape(Capsule())
     }
 }
 
@@ -502,7 +535,7 @@ private struct VideoThumbnail: View {
 
     private var placeholder: some View {
         LinearGradient(
-            colors: [Color.white.opacity(0.96), TikTokTheme.cyan.opacity(0.16)],
+            colors: [TikTokTheme.panelStrong, TikTokTheme.cyan.opacity(0.16)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
