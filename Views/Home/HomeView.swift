@@ -64,19 +64,31 @@ struct FirstTimeHomeView: View {
             .padding(.horizontal, 24)
             .padding(.top, 18)
 
-            Spacer()
+            Spacer(minLength: 24)
 
-            VStack(spacing: 12) {
-                Text("Focus Video")
-                    .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                    .foregroundColor(TikTokTheme.primaryText)
+            VStack(spacing: 22) {
+                FirstTimeFocusVisual()
 
-                Text("勉強を始めましょう")
-                    .font(.headline)
-                    .foregroundColor(TikTokTheme.secondaryText)
+                VStack(spacing: 10) {
+                    Text("Focus Video")
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .foregroundColor(TikTokTheme.primaryText)
+                        .minimumScaleFactor(0.82)
+
+                    Text("1本だけ、最後まで。")
+                        .font(.title3.weight(.semibold))
+                        .foregroundColor(TikTokTheme.secondaryText)
+                }
+
+                HStack(spacing: 8) {
+                    FirstTimeSourcePill(title: "ローカル", systemImage: "folder.fill")
+                    FirstTimeSourcePill(title: "YouTube", systemImage: "play.rectangle.fill")
+                    FirstTimeSourcePill(title: "Vimeo", systemImage: "v.circle.fill")
+                }
             }
+            .padding(.horizontal, 24)
 
-            Spacer()
+            Spacer(minLength: 34)
 
             HomeVideoCTAButton(
                 title: "動画を追加する",
@@ -89,7 +101,7 @@ struct FirstTimeHomeView: View {
             }
             .padding(.horizontal, 40)
 
-            Spacer()
+            Spacer(minLength: 42)
         }
         .sheet(isPresented: $showingAddSheet) {
             AddVideoSheet(activeVideo: $activeVideo)
@@ -121,6 +133,140 @@ struct FirstTimeHomeView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("設定")
         }
+    }
+}
+
+private struct FirstTimeFocusVisual: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(TikTokTheme.pink.opacity(colorScheme == .dark ? 0.18 : 0.12))
+                .frame(width: 210, height: 210)
+                .blur(radius: 36)
+                .offset(x: -54, y: 18)
+
+            Circle()
+                .fill(TikTokTheme.readableBlue.opacity(colorScheme == .dark ? 0.22 : 0.14))
+                .frame(width: 190, height: 190)
+                .blur(radius: 34)
+                .offset(x: 58, y: -28)
+
+            RoundedRectangle(cornerRadius: 34, style: .continuous)
+                .fill(TikTokTheme.panelStrong)
+                .frame(width: 236, height: 256)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 34, style: .continuous)
+                        .stroke(TikTokTheme.border, lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.10), radius: 24, x: 0, y: 18)
+
+            VStack(spacing: 10) {
+                MiniVideoPage(opacity: 0.54, scale: 0.82)
+                    .offset(y: 3)
+
+                MainVideoPage()
+
+                MiniVideoPage(opacity: 0.34, scale: 0.82)
+                    .offset(y: -3)
+            }
+            .frame(width: 190, height: 224)
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+
+            VStack(spacing: 5) {
+                ForEach(0..<3, id: \.self) { index in
+                    Capsule()
+                        .fill(index == 1 ? TikTokTheme.pink : TikTokTheme.border)
+                        .frame(width: index == 1 ? 18 : 7, height: 7)
+                }
+            }
+            .padding(8)
+            .background(TikTokTheme.panel.opacity(0.9), in: Capsule())
+            .offset(x: 96, y: 2)
+        }
+        .frame(height: 282)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct MainVideoPage: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        TikTokTheme.primaryText.opacity(0.92),
+                        TikTokTheme.primaryText.opacity(0.74)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: 176, height: 116)
+            .overlay {
+                ZStack {
+                    Circle()
+                        .fill(.white.opacity(0.18))
+                        .frame(width: 58, height: 58)
+
+                    Image(systemName: "play.fill")
+                        .font(.title3.weight(.bold))
+                        .foregroundColor(.white)
+                        .offset(x: 2)
+                }
+            }
+            .overlay(alignment: .bottomLeading) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Capsule()
+                        .fill(TikTokTheme.pink)
+                        .frame(width: 60, height: 5)
+                    Capsule()
+                        .fill(.white.opacity(0.34))
+                        .frame(width: 118, height: 5)
+                }
+                .padding(16)
+            }
+    }
+}
+
+private struct MiniVideoPage: View {
+    var opacity: Double
+    var scale: Double
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .fill(TikTokTheme.primaryText.opacity(opacity))
+            .frame(width: 168, height: 78)
+            .scaleEffect(scale)
+            .overlay {
+                Image(systemName: "play.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(.white.opacity(0.72))
+                    .offset(x: 1)
+            }
+    }
+}
+
+private struct FirstTimeSourcePill: View {
+    var title: String
+    var systemImage: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: systemImage)
+                .font(.caption2.weight(.bold))
+            Text(title)
+                .font(.caption.weight(.semibold))
+        }
+        .foregroundColor(TikTokTheme.secondaryText)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(TikTokTheme.panelStrong, in: Capsule())
+        .overlay(
+            Capsule()
+                .stroke(TikTokTheme.border, lineWidth: 1)
+        )
     }
 }
 
