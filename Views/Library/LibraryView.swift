@@ -168,10 +168,11 @@ struct LibraryView: View {
             Label {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(folder.name)
-                    if isSearching, let path = folder.parent?.name {
+                    if let path = folderPathText(for: folder) {
                         Text(path)
                             .font(.caption)
                             .foregroundStyle(TikTokTheme.secondaryText)
+                            .lineLimit(1)
                     }
                 }
             } icon: {
@@ -542,7 +543,15 @@ struct FolderDetailView: View {
     private func folderRow(_ child: FolderItem) -> some View {
         NavigationLink(destination: FolderDetailView(folder: child, activeVideo: $activeVideo, sortOption: $sortOption)) {
             Label {
-                Text(child.name)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(child.name)
+                    if let path = folderPathText(for: child) {
+                        Text(path)
+                            .font(.caption)
+                            .foregroundStyle(TikTokTheme.secondaryText)
+                            .lineLimit(1)
+                    }
+                }
             } icon: {
                 Image(systemName: "folder.fill")
                     .foregroundStyle(TikTokTheme.readableBlue)
@@ -835,34 +844,122 @@ struct VideoLibraryRow: View {
     var showsFolderPath: Bool
 
     var body: some View {
-        Label {
-            VStack(alignment: .leading, spacing: 5) {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(playIconBackground)
+                    .frame(width: 36, height: 36)
+                Image(systemName: "play.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(playIconColor)
+                    .offset(x: 1)
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
                 Text(video.title)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(TikTokTheme.primaryText)
                     .lineLimit(2)
 
-                HStack(spacing: 8) {
-                    if showsFolderPath, let folder = video.folder {
-                        Text(folderPath(for: folder))
-                    }
+                HStack(spacing: 6) {
+                    statusBadge
+                    sourceBadge
 
-                    if shouldShowProgressText {
-                        Text(progressText)
+                    if showsFolderPath, let folder = video.folder {
+                        Label(folderPath(for: folder), systemImage: "folder.fill")
+                            .lineLimit(1)
                     }
                 }
-                .font(.caption)
+                .font(.caption2.weight(.medium))
                 .foregroundStyle(TikTokTheme.secondaryText)
+
+                VStack(spacing: 4) {
+                    ProgressView(value: progress)
+                        .tint(progress > 0 ? TikTokTheme.green : TikTokTheme.border)
+                        .scaleEffect(x: 1, y: 0.62, anchor: .center)
+
+                    if hasPlaybackPosition {
+                        HStack {
+                            Text(progressText)
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(TikTokTheme.secondaryText)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }
             }
-        } icon: {
-            Image(systemName: "play.rectangle")
         }
+    }
+
+    private var statusBadge: some View {
+        Text(StudyProgress.statusText(for: video))
+            .foregroundStyle(statusForeground)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(statusBackground)
+            .clipShape(Capsule())
+    }
+
+    private var sourceBadge: some View {
+        Text(sourceText)
+            .foregroundStyle(TikTokTheme.secondaryText)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(TikTokTheme.border.opacity(0.55))
+            .clipShape(Capsule())
     }
 
     private var progressText: String {
         StudyProgress.compactPlaybackPositionText(for: video)
     }
 
-    private var shouldShowProgressText: Bool {
-        video.duration > 0 || StudyProgress.lastPlaybackPosition(for: video) > 0
+    private var hasPlaybackPosition: Bool {
+        StudyProgress.lastPlaybackPosition(for: video) > 0
+    }
+
+    private var progress: Double {
+        StudyProgress.progress(for: video)
+    }
+
+    private var sourceText: String {
+        switch video.type {
+        case .youtube:
+            return "YouTube"
+        case .vimeo:
+            return "Vimeo"
+        case .local:
+            return "ローカル"
+        }
+    }
+
+    private var playIconBackground: Color {
+        progress > 0 ? TikTokTheme.pink.opacity(0.12) : TikTokTheme.panel
+    }
+
+    private var playIconColor: Color {
+        progress > 0 ? TikTokTheme.pink : TikTokTheme.secondaryText
+    }
+
+    private var statusForeground: Color {
+        switch StudyProgress.statusText(for: video) {
+        case "未視聴":
+            return TikTokTheme.secondaryText
+        case "あと少し":
+            return TikTokTheme.pink
+        default:
+            return TikTokTheme.green
+        }
+    }
+
+    private var statusBackground: Color {
+        switch StudyProgress.statusText(for: video) {
+        case "未視聴":
+            return TikTokTheme.border.opacity(0.55)
+        case "あと少し":
+            return TikTokTheme.pink.opacity(0.12)
+        default:
+            return TikTokTheme.green.opacity(0.12)
+        }
     }
 }
 
@@ -920,6 +1017,11 @@ private func folderPath(for folder: FolderItem) -> String {
     }
 
     return names.joined(separator: " / ")
+}
+
+private func folderPathText(for folder: FolderItem) -> String? {
+    guard folder.parent != nil else { return nil }
+    return folderPath(for: folder)
 }
 
 private func descendantFolderCount(for folder: FolderItem) -> Int {

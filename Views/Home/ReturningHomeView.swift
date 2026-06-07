@@ -7,16 +7,18 @@ import UIKit
 struct ReturningHomeView: View {
     @Binding var activeVideo: VideoItem?
     var totalStudyTime: TimeInterval
+    var videoCompletionCount: Int
     var onOpenSettings: () -> Void
 
     @State private var showingAddSheet = false
-    @State private var addDestination: AddDestination = .watchLater
+    @State private var showingAllRecommendations = false
+    @State private var showingHelpSheet = false
     @Query(sort: \StudySession.startTime, order: .reverse) private var studySessions: [StudySession]
     @Query(sort: \VideoItem.createdAt, order: .reverse) private var videos: [VideoItem]
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 24) {
+            VStack(spacing: 18) {
                 heroSection
                 actionCards
                 recommendationsSection
@@ -25,99 +27,92 @@ struct ReturningHomeView: View {
             .padding(.top, 48)
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddVideoSheet(
-                activeVideo: $activeVideo,
-                onAddNow: addDestination == .startNow ? {} : nil
-            )
+            AddVideoSheet(activeVideo: $activeVideo)
+        }
+        .sheet(isPresented: $showingAllRecommendations) {
+            RecommendationListSheet(videos: recommendedVideos) { video in
+                showingAllRecommendations = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                    activeVideo = video
+                }
+            }
+        }
+        .sheet(isPresented: $showingHelpSheet) {
+            StudyXPHelpSheet()
         }
     }
 
     private var heroSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
+        VStack(spacing: 18) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("こんにちは")
-                        .font(.title2.weight(.semibold))
+                    Text(primaryStudyText)
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundColor(TikTokTheme.primaryText)
-                    Text("今日も一緒に学びましょう！")
-                        .font(.subheadline)
+                        .minimumScaleFactor(0.8)
+                    Text(deltaMessage)
+                        .font(.callout.weight(.medium))
                         .foregroundColor(TikTokTheme.secondaryText)
                 }
                 Spacer()
-                Button(action: onOpenSettings) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(TikTokTheme.secondaryText)
-                        .padding(10)
-                        .background(Circle().fill(TikTokTheme.panelStrong))
+                headerButtons
+            }
+
+            Image(growthAssetName)
+                .resizable()
+                .scaledToFit()
+                .frame(height: 176)
+                .frame(maxWidth: .infinity)
+                .transition(.scale.combined(with: .opacity))
+                .animation(.smooth(duration: 0.35), value: growthAssetName)
+
+            VStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    GrowthMetricPill(
+                        title: "今日",
+                        value: todayMinutes > 0 ? "\(todayMinutes)分" : "まず1本",
+                        systemImage: "clock.fill",
+                        accent: TikTokTheme.green
+                    )
+
+                    GrowthMetricPill(
+                        title: "連続",
+                        value: streakDays > 0 ? "\(streakDays)日" : "今日から",
+                        systemImage: "flame.fill",
+                        accent: TikTokTheme.green
+                    )
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("設定")
-            }
-            .padding(.top, 24)
-            .padding(.horizontal, 24)
 
-            Spacer()
-
-            // Bottom Cards
-            HStack(alignment: .bottom, spacing: 12) {
-                TodayStudyCard(minutes: todayMinutes, deltaMinutes: deltaMinutes)
-                Spacer(minLength: 0)
-                LevelCard(levelState: levelState, streakDays: streakDays)
+                LevelProgressStrip(levelState: levelState)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
         }
-        .frame(height: 240)
+        .padding(20)
         .background {
-            ZStack {
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(TikTokTheme.panelStrong)
-
-                VStack {
-                    Spacer()
-                    Image(growthAssetName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 168, height: 168)
-                        .offset(x: 8, y: 10)
-                        .transition(.scale.combined(with: .opacity))
-                        .animation(.smooth(duration: 0.35), value: growthAssetName)
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(TikTokTheme.panelStrong)
+                .overlay(alignment: .topTrailing) {
+                    Circle()
+                        .fill(TikTokTheme.green.opacity(0.12))
+                        .frame(width: 160, height: 160)
+                        .blur(radius: 28)
+                        .offset(x: 46, y: -54)
                 }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .stroke(TikTokTheme.border, lineWidth: 1)
-            )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .stroke(TikTokTheme.border, lineWidth: 1)
+                )
         }
         .padding(.horizontal, 20)
     }
 
     private var actionCards: some View {
-        HStack(spacing: 14) {
-            ActionCard(
-                title: "今すぐ学習する",
-                subtitle: "動画を追加して学習を始めましょう",
-                systemImage: "play.fill",
-                accent: TikTokTheme.pink,
-                background: TikTokTheme.panelStrong
-            ) {
-                addDestination = .startNow
-                showingAddSheet = true
-            }
-
-            ActionCard(
-                title: "後で見る",
-                subtitle: "フォルダを選んで動画を保存",
-                systemImage: "folder.fill",
-                accent: TikTokTheme.readableBlue,
-                background: TikTokTheme.panelStrong
-            ) {
-                addDestination = .watchLater
-                showingAddSheet = true
-            }
+        HomeVideoCTAButton(
+            title: "動画を追加する",
+            subtitle: "今すぐ再生も、あとで保存もここから",
+            systemImage: "plus.circle.fill",
+            accent: TikTokTheme.pink
+        ) {
+            showingAddSheet = true
         }
         .padding(.horizontal, 20)
     }
@@ -129,10 +124,13 @@ struct ReturningHomeView: View {
                     .font(.headline.weight(.semibold))
                     .foregroundColor(TikTokTheme.primaryText)
                 Spacer()
-                Button("すべて見る") {}
+                Button("すべて見る") {
+                    showingAllRecommendations = true
+                }
                     .font(.subheadline)
                     .foregroundColor(TikTokTheme.secondaryText)
                     .buttonStyle(.plain)
+                    .disabled(recommendedVideos.isEmpty)
             }
 
             if recommendedVideos.isEmpty {
@@ -226,11 +224,27 @@ struct ReturningHomeView: View {
     }
 
     private var levelState: StudyGrowth.LevelState {
-        StudyGrowth.levelState(totalStudyTime: totalStudyTime, streakDays: streakDays)
+        StudyGrowth.levelState(
+            totalStudyTime: totalStudyTime,
+            streakDays: streakDays,
+            videoCompletionCount: videoCompletionCount
+        )
     }
 
     private var growthAssetName: String {
         levelState.assetName
+    }
+
+    private var primaryStudyText: String {
+        todayMinutes > 0 ? "今日 \(todayMinutes)分" : "今日の1本を始めよう"
+    }
+
+    private var deltaMessage: String {
+        guard todayMinutes > 0 else {
+            return "短くても、まず再生すれば木が育ちます"
+        }
+        let sign = deltaMinutes >= 0 ? "+" : ""
+        return "昨日より \(sign)\(deltaMinutes)分"
     }
 
     private var recentFocusFolderID: UUID? {
@@ -241,134 +255,127 @@ struct ReturningHomeView: View {
             .folder?
             .id
     }
-}
 
-private enum AddDestination {
-    case startNow
-    case watchLater
-}
-
-private struct TodayStudyCard: View {
-    var minutes: Int
-    var deltaMinutes: Int
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 5) {
-                Image(systemName: "clock.fill")
-                    .font(.caption2)
-                    .foregroundColor(TikTokTheme.cyan)
-                Text("今日の学習時間")
-                    .font(.caption2)
-                    .foregroundColor(TikTokTheme.secondaryText)
-            }
-            Text(primaryText)
-                .font(.system(size: minutes == 0 ? 24 : 30, weight: .bold, design: .rounded))
-                .foregroundColor(TikTokTheme.primaryText)
-            Text(deltaText)
-                .font(.caption2)
-                .foregroundColor(deltaMinutes >= 0 ? TikTokTheme.green : TikTokTheme.secondaryText)
-                .opacity(0.8)
-        }
-        .padding(14)
-        .background(TikTokTheme.panelStrong)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    private var deltaText: String {
-        guard minutes > 0 else {
-            return "短く始めても大丈夫"
-        }
-        let sign = deltaMinutes >= 0 ? "+" : ""
-        return "昨日より \(sign)\(deltaMinutes)分"
-    }
-
-    private var primaryText: String {
-        minutes > 0 ? "\(minutes)分" : "まず1本"
-    }
-}
-
-private struct LevelCard: View {
-    var levelState: StudyGrowth.LevelState
-    var streakDays: Int
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 5) {
-                Image(systemName: "leaf.fill")
-                    .font(.caption2)
-                    .foregroundColor(TikTokTheme.green)
-                Text("Lv. \(levelState.level)")
+    private var headerButtons: some View {
+        HStack(spacing: 10) {
+            Button(action: { showingHelpSheet = true }) {
+                Image(systemName: "questionmark.circle.fill")
                     .font(.caption.weight(.semibold))
-                    .foregroundColor(TikTokTheme.primaryText)
+                    .foregroundColor(TikTokTheme.secondaryText)
+                    .padding(10)
+                    .background(Circle().fill(TikTokTheme.panelStrong))
             }
-            ProgressView(value: levelState.progress)
-                .tint(TikTokTheme.cyan)
-                .frame(width: 72)
-                .scaleEffect(x: 1, y: 0.8, anchor: .leading)
-            Text("\(levelState.currentLevelXP)/\(levelState.requiredXP) XP")
-                .font(.caption2.monospacedDigit())
-                .foregroundColor(TikTokTheme.secondaryText)
-            if streakDays > 0 {
-                Text("\(streakDays)日連続")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundColor(TikTokTheme.green)
+            .buttonStyle(.plain)
+            .accessibilityLabel("XPのヘルプ")
+
+            Button(action: onOpenSettings) {
+                Image(systemName: "gearshape.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(TikTokTheme.secondaryText)
+                    .padding(10)
+                    .background(Circle().fill(TikTokTheme.panelStrong))
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("設定")
         }
-        .padding(12)
-        .background(TikTokTheme.panelStrong)
+    }
+}
+
+private struct GrowthMetricPill: View {
+    var title: String
+    var value: String
+    var systemImage: String
+    var accent: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.bold))
+                .foregroundColor(accent)
+                .frame(width: 24, height: 24)
+                .background(accent.opacity(0.13), in: Circle())
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.caption2.weight(.medium))
+                    .foregroundColor(TikTokTheme.secondaryText)
+                Text(value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(TikTokTheme.primaryText)
+                    .monospacedDigit()
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(TikTokTheme.panel)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
-private struct ActionCard: View {
+private struct LevelProgressStrip: View {
+    var levelState: StudyGrowth.LevelState
+
+    var body: some View {
+        VStack(spacing: 7) {
+            HStack {
+                Text("Lv. \(levelState.level)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(TikTokTheme.primaryText)
+                Spacer()
+                Text("\(levelState.currentLevelXP)/\(levelState.requiredXP) XP")
+                    .font(.caption.monospacedDigit().weight(.medium))
+                    .foregroundColor(TikTokTheme.secondaryText)
+            }
+
+            ProgressView(value: levelState.progress)
+                .tint(TikTokTheme.green)
+                .scaleEffect(x: 1, y: 0.8, anchor: .center)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(TikTokTheme.panel)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+struct HomeVideoCTAButton: View {
     var title: String
     var subtitle: String
     var systemImage: String
     var accent: Color
-    var background: Color
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    ZStack {
-                        Circle()
-                            .fill(accent.opacity(0.18))
-                            .frame(width: 34, height: 34)
-                        Image(systemName: systemImage)
-                            .font(.subheadline)
-                            .foregroundColor(accent)
-                    }
-                    Spacer()
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.headline.weight(.bold))
+                    .foregroundColor(accent)
+                    .frame(width: 38, height: 38)
+                    .background(Color.white.opacity(0.95), in: Circle())
+                    .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline.weight(.bold))
+                        .foregroundColor(.white)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.82))
                 }
-                Text(title)
-                    .font(.headline.weight(.semibold))
-                    .foregroundColor(TikTokTheme.primaryText)
-                    .lineLimit(1)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundColor(TikTokTheme.secondaryText)
-                    .lineLimit(2)
-                Spacer(minLength: 0)
-                HStack {
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundColor(accent.opacity(0.6))
-                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(.white.opacity(0.78))
             }
             .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(background)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(TikTokTheme.border, lineWidth: 1)
-            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(accent, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: accent.opacity(0.18), radius: 14, x: 0, y: 8)
         }
         .buttonStyle(.plain)
     }
@@ -464,6 +471,40 @@ private struct RecommendationRow: View {
 
     private var durationText: String? {
         StudyProgress.durationText(for: video)
+    }
+}
+
+private struct RecommendationListSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var videos: [VideoItem]
+    var onPlay: (VideoItem) -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 10) {
+                    ForEach(videos) { video in
+                        RecommendationRow(video: video) {
+                            onPlay(video)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 18)
+            }
+            .background(TikTokTheme.background)
+            .navigationTitle("おすすめ")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("閉じる") {
+                        dismiss()
+                    }
+                }
+            }
+            .tint(TikTokTheme.readableBlue)
+        }
     }
 }
 

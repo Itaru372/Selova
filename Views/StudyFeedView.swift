@@ -3,6 +3,7 @@ import AVKit
 import WebKit
 import SwiftData
 import UserNotifications
+import ObjectiveC.runtime
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -24,6 +25,9 @@ struct StudyFeedView: View {
     @State private var isDismissing = false
     @State private var didScheduleCloseReminders = false
     @State private var showingCompletionScreen = false
+    @State private var webPlayerReloadID = UUID()
+    @State private var webPlaybackStartTime: Double?
+    @State private var shouldStopWebPlayback = false
 
     init(video: VideoItem) {
         self.video = video
@@ -80,11 +84,73 @@ struct StudyFeedView: View {
 
     @ViewBuilder
     private func videoPage(in size: CGSize) -> some View {
-        if size.width > size.height {
-            landscapeVideoPage(in: size)
+        if video.type == .local {
+            if size.width > size.height {
+                landscapeVideoPage(in: size)
+            } else {
+                portraitVideoPage(in: size)
+            }
         } else {
-            portraitVideoPage(in: size)
+            if size.width > size.height {
+                webLandscapeVideoPage(in: size)
+            } else {
+                webPortraitVideoPage(in: size)
+            }
         }
+    }
+
+    private func webLandscapeVideoPage(in size: CGSize) -> some View {
+        ZStack {
+            feedPageSurface(in: size) {
+                playerContainer(gravity: .resizeAspect)
+            }
+            .frame(width: size.width, height: size.height)
+
+            if let playbackError {
+                playbackErrorView(playbackError)
+                    .padding(.horizontal, 28)
+                    .zIndex(2)
+            }
+
+            backButton
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .zIndex(3)
+        }
+        .frame(width: size.width, height: size.height)
+    }
+
+    private func webPortraitVideoPage(in size: CGSize) -> some View {
+        ZStack {
+            feedPageSurface(in: size) {
+                thumbnailPage(in: size)
+            }
+            .frame(width: size.width, height: size.height)
+            .offset(y: -size.height + swipeOffset)
+
+            feedPageSurface(in: size) {
+                thumbnailPage(in: size)
+            }
+            .frame(width: size.width, height: size.height)
+            .offset(y: size.height + swipeOffset)
+
+            feedPageSurface(in: size) {
+                playerContainer(gravity: .resizeAspect)
+            }
+            .frame(width: size.width, height: size.height)
+            .offset(y: swipeOffset)
+            .zIndex(1)
+
+            if let playbackError {
+                playbackErrorView(playbackError)
+                    .padding(.horizontal, 28)
+                    .zIndex(2)
+            }
+
+            backButton
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .zIndex(3)
+        }
+        .frame(width: size.width, height: size.height)
     }
 
     private func landscapeVideoPage(in size: CGSize) -> some View {
@@ -172,18 +238,20 @@ struct StudyFeedView: View {
     ) -> some View {
         let horizontalInset: CGFloat = size.width > 430 ? 16 : 8
         let verticalInset: CGFloat = size.height > 700 ? 12 : 8
+        let cornerRadius = feedSurfaceCornerRadius(for: size)
+        let innerCornerRadius = max(cornerRadius - 4, cornerRadius * 0.9)
 
         return ZStack {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(Color.black.opacity(0.82))
 
             content()
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: innerCornerRadius, style: .continuous))
         }
         .padding(.horizontal, horizontalInset)
         .padding(.vertical, verticalInset)
         .overlay(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
+            RoundedRectangle(cornerRadius: cornerRadius + 2, style: .continuous)
                 .stroke(
                     LinearGradient(
                         colors: [
@@ -200,6 +268,11 @@ struct StudyFeedView: View {
                 .padding(.vertical, verticalInset)
         )
         .shadow(color: Color.black.opacity(0.36), radius: 24, x: 0, y: 14)
+    }
+
+    private func feedSurfaceCornerRadius(for size: CGSize) -> CGFloat {
+        let minSide = min(size.width, size.height)
+        return max(36, minSide * 0.12)
     }
 
     private func feedSwipeGesture(in size: CGSize) -> some Gesture {
@@ -307,8 +380,8 @@ struct StudyFeedView: View {
         Group {
             if video.type == .local {
                 localPlayerView(gravity: gravity)
-            } else if let url = embedURL {
-                webPlayerView(url: url)
+            } else if let descriptor = webPlayerDescriptor {
+                webPlayerView(descriptor: descriptor)
             } else {
                 playbackErrorView("動画URLを読み込めません")
             }
@@ -327,14 +400,25 @@ struct StudyFeedView: View {
         }
     }
 
-    private func webPlayerView(url: URL) -> some View {
-        WebViewPlayerFixed(url: url) { message in
-            playbackError = message
-        }
+    private func webPlayerView(descriptor: WebPlayerDescriptor) -> some View {
+        WebViewPlayerFixed(
+            descriptor: descriptor,
+            startTime: webPlaybackStartTime ?? Self.validPlaybackTime(video.lastPlaybackTime) ?? 0,
+            reloadID: webPlayerReloadID,
+            isStopped: shouldStopWebPlayback,
+            onProgress: updateWebPlaybackProgress,
+            onComplete: completePlayback,
+            onError: { message in
+                playbackError = message
+            }
+        )
         .onAppear {
             playbackError = nil
+            if webPlaybackStartTime == nil {
+                webPlaybackStartTime = Self.validPlaybackTime(video.lastPlaybackTime) ?? 0
+            }
         }
-            .background(Color.black)
+        .background(Color.black)
     }
 
     private func setupPlayer() {
@@ -442,7 +526,10 @@ struct StudyFeedView: View {
     // MARK: - Common
 
     private var backButton: some View {
-        FrictionBackButton(onDismiss: finishSessionAndDismiss)
+        FrictionBackButton(
+            onDismiss: finishSessionAndDismiss,
+            allowsImmediateDismiss: showingCompletionScreen
+        )
             .padding(.leading, 20)
             .padding(.top, 54)
     }
@@ -468,6 +555,20 @@ struct StudyFeedView: View {
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
             }
+
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.caption.weight(.bold))
+                Text("動画完了ボーナス")
+                    .font(.subheadline.weight(.semibold))
+                Text("+\(StudyGrowth.videoCompletionXP) XP")
+                    .font(.subheadline.weight(.bold))
+                    .monospacedDigit()
+            }
+            .foregroundStyle(TikTokTheme.green)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(TikTokTheme.green.opacity(0.14), in: Capsule())
 
             VStack(spacing: 10) {
                 Button {
@@ -504,8 +605,18 @@ struct StudyFeedView: View {
         .shadow(color: .black.opacity(0.38), radius: 28, x: 0, y: 18)
     }
 
-    private var embedURL: URL? {
-        VideoEmbedURLBuilder.embedURL(for: video)
+    private var webPlayerDescriptor: WebPlayerDescriptor? {
+        switch video.type {
+        case .youtube:
+            guard let id = VideoEmbedURLBuilder.youtubeVideoID(from: video.urlString) else { return nil }
+            return WebPlayerDescriptor(provider: .youtube, videoID: id, sourceURLString: nil)
+        case .vimeo:
+            guard let id = VideoEmbedURLBuilder.vimeoVideoID(from: video.urlString),
+                  let url = VideoEmbedURLBuilder.vimeoEmbedURL(from: video.urlString) else { return nil }
+            return WebPlayerDescriptor(provider: .vimeo, videoID: id, sourceURLString: url.absoluteString)
+        case .local:
+            return nil
+        }
     }
 
     private func finishSessionAndDismiss() {
@@ -516,12 +627,9 @@ struct StudyFeedView: View {
         let session = StudySession(startTime: sessionStartTime, duration: duration)
         modelContext.insert(session)
 
-        if let player {
-            if let currentTime = Self.validPlaybackTime(player.currentTime().seconds) {
-                video.lastPlaybackTime = currentTime
-            }
-            player.pause()
-        }
+        player?.pause()
+        shouldStopWebPlayback = true
+        persistCurrentPlaybackPosition()
         video.watchedDuration += duration
         try? modelContext.save()
 
@@ -539,6 +647,7 @@ struct StudyFeedView: View {
         if video.duration > 0 {
             video.lastPlaybackTime = video.duration
         }
+        video.completionCount = (video.completionCount ?? 0) + 1
         video.lastWatchedAt = Date()
         try? modelContext.save()
         player?.pause()
@@ -549,9 +658,15 @@ struct StudyFeedView: View {
 
     private func replayVideo() {
         showingCompletionScreen = false
+        shouldStopWebPlayback = false
         video.lastPlaybackTime = 0
-        player?.seek(to: .zero) { _ in
-            player?.play()
+        if video.type == .local {
+            player?.seek(to: .zero) { _ in
+                player?.play()
+            }
+        } else {
+            webPlaybackStartTime = 0
+            webPlayerReloadID = UUID()
         }
     }
 
@@ -732,6 +847,18 @@ struct StudyFeedView: View {
         try? modelContext.save()
     }
 
+    private func updateWebPlaybackProgress(currentTime: Double, duration: Double?) {
+        guard !showingCompletionScreen else { return }
+        if let currentTime = Self.validPlaybackTime(currentTime) {
+            video.lastPlaybackTime = currentTime
+        }
+        if let duration, duration.isFinite, duration > 0 {
+            video.duration = duration
+        }
+        video.lastWatchedAt = Date()
+        try? modelContext.save()
+    }
+
     private func cancelCloseReminderNotifications() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: closeReminderNotificationIDs)
     }
@@ -755,8 +882,11 @@ private struct LocalAVPlayerControllerView: UIViewControllerRepresentable {
         controller.showsPlaybackControls = true
         controller.videoGravity = videoGravity
         controller.updatesNowPlayingInfoCenter = true
-        controller.allowsPictureInPicturePlayback = true
-        controller.canStartPictureInPictureAutomaticallyFromInline = true
+        controller.allowsPictureInPicturePlayback = false
+        controller.canStartPictureInPictureAutomaticallyFromInline = false
+        controller.entersFullScreenWhenPlaybackBegins = false
+        controller.exitsFullScreenWhenPlaybackEnds = false
+        player?.allowsExternalPlayback = false
         controller.view.backgroundColor = .black
         if autoPlay, let player, player.rate == 0 {
             player.play()
@@ -775,43 +905,349 @@ private struct LocalAVPlayerControllerView: UIViewControllerRepresentable {
     }
 }
 
+private struct WebPlayerDescriptor: Equatable {
+    enum Provider: String {
+        case youtube
+        case vimeo
+    }
+
+    var provider: Provider
+    var videoID: String
+    var sourceURLString: String?
+
+    var key: String {
+        "\(provider.rawValue)-\(videoID)-\(sourceURLString ?? "")"
+    }
+}
+
 private struct WebViewPlayerFixed: UIViewRepresentable {
-    var url: URL
+    var descriptor: WebPlayerDescriptor
+    var startTime: Double
+    var reloadID: UUID
+    var isStopped: Bool
+    var onProgress: (_ currentTime: Double, _ duration: Double?) -> Void
+    var onComplete: () -> Void
     var onError: (String) -> Void
 
+    private static var webViewCache: [String: WKWebView] = [:]
+
     func makeCoordinator() -> Coordinator {
-        Coordinator(onError: onError)
+        Coordinator(
+            onProgress: onProgress,
+            onComplete: onComplete,
+            onError: onError
+        )
     }
 
     func makeUIView(context: Context) -> WKWebView {
+        let webView = Self.webView(for: descriptor.key)
+        configure(webView: webView, context: context)
+        return webView
+    }
+
+    func updateUIView(_ uiView: WKWebView, context: Context) {
+        configure(webView: uiView, context: context)
+    }
+
+    static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
+        coordinator.stopPlayback(in: uiView)
+        uiView.configuration.userContentController.removeScriptMessageHandler(forName: "selovaPlayer")
+        uiView.navigationDelegate = nil
+    }
+
+    private func configure(webView: WKWebView, context: Context) {
+        context.coordinator.onProgress = onProgress
+        context.coordinator.onComplete = onComplete
+        context.coordinator.onError = onError
+
+        webView.navigationDelegate = context.coordinator
+        webView.scrollView.isScrollEnabled = false
+        webView.backgroundColor = .black
+        webView.isOpaque = false
+        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "selovaPlayer")
+        webView.configuration.userContentController.add(context.coordinator, name: "selovaPlayer")
+
+        if isStopped {
+            context.coordinator.stopPlayback(in: webView)
+            return
+        }
+
+        context.coordinator.didStopPlayback = false
+        let nextKey = "\(descriptor.key)-\(reloadID.uuidString)-\(Int(startTime.rounded()))"
+        if webView.selovaLoadedKey != nextKey {
+            webView.selovaLoadedKey = nextKey
+            webView.loadHTMLString(playerHTML, baseURL: URL(string: "https://selova.local"))
+        }
+    }
+
+    private static func webView(for key: String) -> WKWebView {
+        if let cached = webViewCache[key] {
+            return cached
+        }
+
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.navigationDelegate = context.coordinator
         webView.scrollView.isScrollEnabled = false
         webView.backgroundColor = .black
         webView.isOpaque = false
         webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
-
-        let request = URLRequest(url: url)
-        webView.load(request)
+        webViewCache[key] = webView
         return webView
     }
 
-    func updateUIView(_ uiView: WKWebView, context: Context) {
-        if uiView.url != url {
-            uiView.load(URLRequest(url: url))
+    private var playerHTML: String {
+        switch descriptor.provider {
+        case .youtube:
+            return youtubeHTML(videoID: descriptor.videoID, startTime: startTime)
+        case .vimeo:
+            return vimeoHTML(videoURLString: descriptor.sourceURLString ?? "", startTime: startTime)
         }
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
-        var onError: (String) -> Void
+    private func youtubeHTML(videoID: String, startTime: Double) -> String {
+        let escapedID = videoID.javascriptEscaped
+        let start = max(0, Int(startTime.rounded(.down)))
+        return """
+        <!doctype html>
+        <html>
+        <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <style>
+        html, body, #player { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+        iframe { width: 100%; height: 100%; border: 0; background: #000; }
+        </style>
+        </head>
+        <body>
+        <div id="player"></div>
+        <script src="https://www.youtube.com/iframe_api"></script>
+        <script>
+        const bridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.selovaPlayer;
+        const post = (payload) => { if (bridge) bridge.postMessage(payload); };
+        let player;
+        let progressTimer;
+        let lastReportedSecond = -1;
 
-        init(onError: @escaping (String) -> Void) {
+        function onYouTubeIframeAPIReady() {
+          player = new YT.Player('player', {
+            videoId: '\(escapedID)',
+            playerVars: {
+              playsinline: 1,
+              autoplay: 1,
+              rel: 0,
+              modestbranding: 1,
+              start: \(start),
+              enablejsapi: 1,
+              origin: 'https://selova.local'
+            },
+            events: {
+              onReady: onReady,
+              onStateChange: onStateChange,
+              onError: function() { post({ type: 'error' }); }
+            }
+          });
+        }
+
+        function onReady() {
+          if (\(start) > 0) {
+            player.seekTo(\(start), true);
+          }
+          player.playVideo();
+          progressTimer = setInterval(reportProgress, 1000);
+          reportProgress();
+        }
+
+        function onStateChange(event) {
+          if (event.data === YT.PlayerState.ENDED) {
+            reportProgress();
+            post({ type: 'ended' });
+          } else if (event.data === YT.PlayerState.PLAYING) {
+            reportProgress();
+          }
+        }
+
+        function reportProgress() {
+          if (!player || !player.getCurrentTime) return;
+          const currentTime = Number(player.getCurrentTime()) || 0;
+          const duration = Number(player.getDuration()) || 0;
+          const second = Math.floor(currentTime);
+          if (second !== lastReportedSecond || duration > 0) {
+            lastReportedSecond = second;
+            post({ type: 'progress', currentTime: currentTime, duration: duration });
+          }
+        }
+        </script>
+        </body>
+        </html>
+        """
+    }
+
+    private func vimeoHTML(videoURLString: String, startTime: Double) -> String {
+        let escapedURL = videoURLString.javascriptEscaped
+        let start = max(0, startTime)
+        return """
+        <!doctype html>
+        <html>
+        <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <style>
+        html, body, #player { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+        iframe { width: 100%; height: 100%; border: 0; background: #000; }
+        </style>
+        </head>
+        <body>
+        <div id="player"></div>
+        <script src="https://player.vimeo.com/api/player.js"></script>
+        <script>
+        const bridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.selovaPlayer;
+        const post = (payload) => { if (bridge) bridge.postMessage(payload); };
+        const player = new Vimeo.Player('player', {
+          url: '\(escapedURL)',
+          autoplay: true,
+          loop: true,
+          autopause: false,
+          playsinline: true,
+          title: false,
+          byline: false,
+          portrait: false,
+          dnt: true
+        });
+        const startTime = \(start);
+
+        player.ready().then(function() {
+          if (startTime > 0) {
+            return player.setCurrentTime(startTime).catch(function(){});
+          }
+        }).then(function() {
+          return player.play().catch(function(){});
+        }).catch(function(error) {
+          postError(error);
+        });
+
+        player.on('timeupdate', function(data) {
+          post({
+            type: 'progress',
+            currentTime: data.seconds || 0,
+            duration: data.duration || 0
+          });
+        });
+
+        player.on('ended', function(data) {
+          post({
+            type: 'progress',
+            currentTime: data.seconds || data.duration || 0,
+            duration: data.duration || 0
+          });
+          post({ type: 'ended' });
+        });
+
+        player.on('error', function(error) {
+          postError(error);
+        });
+
+        function postError(error) {
+          post({
+            type: 'error',
+            provider: 'vimeo',
+            name: error && error.name ? error.name : 'Error',
+            message: error && error.message ? error.message : ''
+          });
+        }
+        </script>
+        </body>
+        </html>
+        """
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+        var onProgress: (_ currentTime: Double, _ duration: Double?) -> Void
+        var onComplete: () -> Void
+        var onError: (String) -> Void
+        var loadedKey: String?
+        var didStopPlayback = false
+
+        init(
+            onProgress: @escaping (_ currentTime: Double, _ duration: Double?) -> Void,
+            onComplete: @escaping () -> Void,
+            onError: @escaping (String) -> Void
+        ) {
+            self.onProgress = onProgress
+            self.onComplete = onComplete
             self.onError = onError
+        }
+
+        func stopPlayback(in webView: WKWebView) {
+            guard !didStopPlayback else { return }
+            didStopPlayback = true
+            loadedKey = nil
+            webView.selovaLoadedKey = nil
+            webView.stopLoading()
+            webView.evaluateJavaScript(
+                "document.querySelectorAll('video').forEach(v => v.pause());",
+                completionHandler: nil
+            )
+            webView.loadHTMLString("<!doctype html><html><body style='margin:0;background:#000'></body></html>", baseURL: nil)
+        }
+
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard let body = message.body as? [String: Any],
+                  let type = body["type"] as? String else {
+                return
+            }
+
+            switch type {
+            case "progress":
+                let currentTime = doubleValue(from: body["currentTime"]) ?? 0
+                let duration = doubleValue(from: body["duration"])
+                onProgress(currentTime, duration)
+            case "ended":
+                onComplete()
+            case "error":
+                let provider = body["provider"] as? String
+                let name = body["name"] as? String
+                let message = body["message"] as? String
+                onError(videoErrorMessage(provider: provider, name: name, message: message))
+            default:
+                break
+            }
+        }
+
+        private func videoErrorMessage(provider: String?, name: String?, message: String?) -> String {
+            let providerName = provider?.lowercased()
+            let errorName = name?.lowercased()
+            let errorMessage = message?.lowercased() ?? ""
+
+            if providerName == "vimeo" {
+                if errorName == "privacyerror" || errorMessage.contains("privacy") {
+                    return "Vimeo の埋め込み権限がありません。`h=` 付きURLか、埋め込み許可された動画を使ってください。"
+                }
+                if errorName == "passworderror" || errorMessage.contains("password") {
+                    return "Vimeo 側でパスワード保護されています。"
+                }
+                if errorMessage.contains("video does not exist") || errorMessage.contains("not found") {
+                    return "Vimeo のURLを確認できませんでした。`h=` が必要な動画の可能性があります。"
+                }
+                return "Vimeo を読み込めませんでした。"
+            }
+
+            return "動画ページを読み込めません"
+        }
+
+        private func doubleValue(from value: Any?) -> Double? {
+            if let value = value as? Double {
+                return value
+            }
+            if let value = value as? NSNumber {
+                return value.doubleValue
+            }
+            if let value = value as? String {
+                return Double(value)
+            }
+            return nil
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -826,6 +1262,29 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
             let nsError = error as NSError
             guard nsError.code != NSURLErrorCancelled else { return }
             onError("動画ページを読み込めません")
+        }
+    }
+}
+
+private extension String {
+    var javascriptEscaped: String {
+        self
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "")
+    }
+}
+
+private extension WKWebView {
+    private static var selovaLoadedKeyAssociationKey: UInt8 = 0
+
+    var selovaLoadedKey: String? {
+        get {
+            objc_getAssociatedObject(self, &Self.selovaLoadedKeyAssociationKey) as? String
+        }
+        set {
+            objc_setAssociatedObject(self, &Self.selovaLoadedKeyAssociationKey, newValue, .OBJC_ASSOCIATION_COPY_NONATOMIC)
         }
     }
 }

@@ -3,6 +3,7 @@ import Combine
 
 struct FrictionBackButton: View {
     var onDismiss: () -> Void
+    var allowsImmediateDismiss: Bool = false
     
     @State private var timeElapsed: TimeInterval = 0
     @State private var isLongPressing = false
@@ -20,7 +21,7 @@ struct FrictionBackButton: View {
     @State private var pressTimer: Timer?
     
     var hasFriction: Bool {
-        timeElapsed >= frictionThreshold
+        timeElapsed >= frictionThreshold && !allowsImmediateDismiss
     }
     
     var body: some View {
@@ -39,7 +40,7 @@ struct FrictionBackButton: View {
             }
             
             Button(action: {
-                if !hasFriction {
+                if !hasFriction || allowsImmediateDismiss {
                     onDismiss()
                 }
             }) {

@@ -27,9 +27,18 @@ final class VideoEmbedURLBuilderTests: XCTestCase {
         let standard = VideoEmbedURLBuilder.vimeoEmbedURL(from: "https://vimeo.com/123456789")
         let player = VideoEmbedURLBuilder.vimeoEmbedURL(from: "https://player.vimeo.com/video/987654321")
         let raw = VideoEmbedURLBuilder.vimeoEmbedURL(from: "13579")
+        let unlisted = VideoEmbedURLBuilder.vimeoEmbedURL(from: "https://vimeo.com/123456789?h=abcdef")
 
         XCTAssertEqual(standard?.absoluteString, "https://player.vimeo.com/video/123456789?autoplay=1&loop=1&autopause=0")
         XCTAssertEqual(player?.path, "/video/987654321")
         XCTAssertEqual(raw?.path, "/video/13579")
+        XCTAssertTrue(unlisted?.absoluteString.contains("h=abcdef") == true)
+    }
+
+    func testVimeoHashExtractionKeepsUnlistedToken() {
+        XCTAssertEqual(
+            VideoEmbedURLBuilder.vimeoHash(from: "https://player.vimeo.com/video/123456789?h=abcdef"),
+            "abcdef"
+        )
     }
 }

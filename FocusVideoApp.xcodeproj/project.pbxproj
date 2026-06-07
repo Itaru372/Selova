@@ -19,6 +19,7 @@
 /* Begin PBXFileReference section */
 		8E860E302FC59E4C00D2BC2B /* FocusVideoApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusVideoApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8EA100012FD2B00100A10001 /* FocusVideoAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FocusVideoAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8EEACC5B2FD424F5004F0442 /* FocusVideoApp.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FocusVideoApp.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -94,6 +95,11 @@
 				8E860E302FC59E4C00D2BC2B /* FocusVideoApp.app */,
 				8EA100012FD2B00100A10001 /* FocusVideoAppTests.xctest */,
 			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8EEACC622FD424F5004F0442 /* Products */ = {
+			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -177,6 +183,12 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8E860E312FC59E4C00D2BC2B /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 8EEACC622FD424F5004F0442 /* Products */;
+					ProjectRef = 8EEACC5B2FD424F5004F0442 /* FocusVideoApp.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				8E860E2F2FC59E4C00D2BC2B /* FocusVideoApp */,

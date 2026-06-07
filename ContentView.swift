@@ -26,7 +26,7 @@ struct ContentView: View {
                 .tag(1)
         }
         .tint(TikTokTheme.readableBlue)
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .toolbarBackground(Color.clear, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .fullScreenCover(item: $activeVideo) { video in
             StudyFeedView(video: video)

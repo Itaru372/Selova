@@ -37,11 +37,15 @@ enum VideoEmbedURLBuilder {
         components.scheme = "https"
         components.host = "player.vimeo.com"
         components.path = "/video/\(videoId)"
-        components.queryItems = [
+        var queryItems = [
             URLQueryItem(name: "autoplay", value: "1"),
             URLQueryItem(name: "loop", value: "1"),
             URLQueryItem(name: "autopause", value: "0")
         ]
+        if let hash = vimeoHash(from: urlString) {
+            queryItems.insert(URLQueryItem(name: "h", value: hash), at: 0)
+        }
+        components.queryItems = queryItems
         return components.url
     }
 
@@ -102,6 +106,23 @@ enum VideoEmbedURLBuilder {
         return pathParts.last { part in
             part.allSatisfy(\.isNumber)
         }
+    }
+
+    nonisolated static func vimeoHash(from urlString: String) -> String? {
+        let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let normalized = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
+        guard let url = URL(string: normalized),
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return nil
+        }
+
+        guard let hash = components.queryItems?.first(where: { $0.name == "h" })?.value else {
+            return nil
+        }
+        let sanitized = sanitizedVideoID(hash)
+        return sanitized?.isEmpty == false ? sanitized : nil
     }
 
     nonisolated private static func sanitizedVideoID(_ value: String) -> String? {

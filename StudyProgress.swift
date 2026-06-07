@@ -87,6 +87,11 @@ enum StudyProgress {
             score += max(0, 32 - Double(daysSinceCreated * 4))
         }
 
+        let minutesSinceCreated = Calendar.current.dateComponents([.minute], from: video.createdAt, to: now).minute ?? 0
+        if progress == 0 && minutesSinceCreated >= 0 && minutesSinceCreated <= 60 {
+            score += 90
+        }
+
         if let focusFolderID,
            let folderID = video.folder?.id,
            folderID == focusFolderID {

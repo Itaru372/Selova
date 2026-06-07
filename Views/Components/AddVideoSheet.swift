@@ -40,8 +40,11 @@ struct AddVideoSheet: View {
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var showingFileImporter = false
     @State private var isFetchingTitle = false
+    @State private var isSubmitting = false
     @State private var localImportMessage: String?
     @State private var remoteImportMessage: String?
+    @State private var pendingPlaybackVideo: VideoItem?
+    @State private var showingPlaybackPrompt = false
 
     @Query(sort: \FolderItem.createdAt) private var allFolders: [FolderItem]
     @Query(sort: \VideoItem.createdAt) private var allVideos: [VideoItem]
@@ -148,7 +151,8 @@ struct AddVideoSheet: View {
                     Picker("フォルダ", selection: $selectedFolder) {
                         Text("指定なし").tag(FolderItem?(nil))
                         ForEach(allFolders) { folder in
-                            Text(folder.name).tag(FolderItem?(folder))
+                            Text(folderDisplayName(for: folder))
+                                .tag(FolderItem?(folder))
                         }
                     }
                 }
@@ -213,6 +217,27 @@ struct AddVideoSheet: View {
                 }
                 .ignoresSafeArea()
             }
+            .confirmationDialog(
+                "追加した動画を今すぐ再生しますか？",
+                isPresented: $showingPlaybackPrompt,
+                titleVisibility: .visible
+            ) {
+                Button("今すぐ再生") {
+                    if let pendingPlaybackVideo {
+                        startPlaybackAndDismiss(pendingPlaybackVideo)
+                    }
+                }
+                Button("あとで見る") {
+                    pendingPlaybackVideo = nil
+                    dismiss()
+                }
+                Button("キャンセル", role: .cancel) {
+                    pendingPlaybackVideo = nil
+                    dismiss()
+                }
+            } message: {
+                Text("保存は完了しています。すぐ学習を始めることも、あとでライブラリから開くこともできます。")
+            }
         }
     }
     
@@ -261,6 +286,23 @@ struct AddVideoSheet: View {
                 .frame(width: 16, height: 16)
                 .clipped()
         }
+    }
+
+    private func folderDisplayName(for folder: FolderItem) -> String {
+        guard folder.parent != nil else { return folder.name }
+        return folderPath(for: folder)
+    }
+
+    private func folderPath(for folder: FolderItem) -> String {
+        var names = [folder.name]
+        var parent = folder.parent
+
+        while let currentParent = parent {
+            names.insert(currentParent.name, at: 0)
+            parent = currentParent.parent
+        }
+
+        return names.joined(separator: " / ")
     }
     
     private var selectedLocalVideoRow: some View {
@@ -340,6 +382,7 @@ struct AddVideoSheet: View {
     }
 
     private var titleIsDuplicate: Bool {
+        guard !isSubmitting else { return false }
         guard !normalizedTitle.isEmpty else { return false }
         return allVideos.contains {
             $0.title
@@ -493,6 +536,7 @@ struct AddVideoSheet: View {
 
     private func addVideo() {
         guard canAddVideo else { return }
+        isSubmitting = true
         let video = VideoItem(title: normalizedTitle, urlString: urlString, type: selectedType, duration: duration)
         video.folder = selectedFolder
         video.thumbnailData = thumbnailData
@@ -500,12 +544,16 @@ struct AddVideoSheet: View {
         modelContext.insert(video)
         try? modelContext.save()
 
-        if let onAddNow = onAddNow {
+        pendingPlaybackVideo = video
+        showingPlaybackPrompt = true
+    }
+
+    private func startPlaybackAndDismiss(_ video: VideoItem) {
+        pendingPlaybackVideo = nil
+        onAddNow?()
+        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
             activeVideo = video
-            onAddNow()
-            dismiss()
-        } else {
-            dismiss()
         }
     }
 }

@@ -24,7 +24,7 @@ struct RealVideoPlayer: View {
             )
         } else if video.type == .youtube, let url = youtubeEmbedURL(from: video.urlString) {
             WebViewPlayer(url: url)
-        } else if video.type == .vimeo, let url = vimeoEmbedURL(from: video.urlString) {
+        } else if video.type == .vimeo, let url = VideoEmbedURLBuilder.vimeoEmbedURL(from: video.urlString) {
             WebViewPlayer(url: url)
         } else {
             VStack {
@@ -101,13 +101,6 @@ struct RealVideoPlayer: View {
         return id.isEmpty ? nil : id
     }
 
-    private func vimeoEmbedURL(from urlString: String) -> URL? {
-        if let url = URL(string: urlString) {
-            let videoId = url.lastPathComponent
-            return URL(string: "https://player.vimeo.com/video/\(videoId)?autoplay=1&loop=1&autopause=0")
-        }
-        return nil
-    }
 }
 
 struct LocalVideoPlayer: UIViewControllerRepresentable {
@@ -135,6 +128,11 @@ struct LocalVideoPlayer: UIViewControllerRepresentable {
         controller.player = activePlayer
         controller.showsPlaybackControls = true
         controller.videoGravity = .resizeAspect
+        controller.allowsPictureInPicturePlayback = false
+        controller.canStartPictureInPictureAutomaticallyFromInline = false
+        controller.entersFullScreenWhenPlaybackBegins = false
+        controller.exitsFullScreenWhenPlaybackEnds = false
+        activePlayer.allowsExternalPlayback = false
 
         if managesPlayback, let lastTime = Self.validPlaybackTime(video.lastPlaybackTime) {
             let cmTime = CMTime(seconds: lastTime, preferredTimescale: 600)

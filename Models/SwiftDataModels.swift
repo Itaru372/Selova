@@ -41,6 +41,7 @@ final class VideoItem {
     var watchedDuration: TimeInterval
     var lastWatchedAt: Date?
     var lastPlaybackTime: Double?
+    var completionCount: Int?
     var thumbnailData: Data?
     
     var folder: FolderItem?
@@ -50,7 +51,7 @@ final class VideoItem {
         set { typeRawValue = newValue.rawValue }
     }
     
-    init(id: UUID = UUID(), title: String, urlString: String, type: VideoType, createdAt: Date = Date(), duration: TimeInterval = 0, watchedDuration: TimeInterval = 0) {
+    init(id: UUID = UUID(), title: String, urlString: String, type: VideoType, createdAt: Date = Date(), duration: TimeInterval = 0, watchedDuration: TimeInterval = 0, completionCount: Int? = nil) {
         self.id = id
         self.title = title
         self.urlString = urlString
@@ -58,6 +59,7 @@ final class VideoItem {
         self.createdAt = createdAt
         self.duration = duration
         self.watchedDuration = watchedDuration
+        self.completionCount = completionCount
     }
 }
 

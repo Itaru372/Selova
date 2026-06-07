@@ -56,6 +56,7 @@ final class StudyProgressTests: XCTestCase {
             title: "Unwatched",
             urlString: "c.mov",
             type: .local,
+            createdAt: Date(timeIntervalSinceNow: -3 * 24 * 60 * 60),
             duration: 100
         )
 
@@ -115,5 +116,20 @@ final class StudyProgressTests: XCTestCase {
         XCTAssertEqual(withoutStreak.xp, 100)
         XCTAssertGreaterThan(withStreak.xp, withoutStreak.xp)
         XCTAssertGreaterThanOrEqual(withStreak.level, withoutStreak.level)
+    }
+
+    func testStudyGrowthLevelStateIncludesVideoCompletionBonus() {
+        let base = StudyGrowth.levelState(totalStudyTime: 10 * 60, streakDays: 0)
+        let withCompletion = StudyGrowth.levelState(
+            totalStudyTime: 10 * 60,
+            streakDays: 0,
+            videoCompletionCount: 1
+        )
+
+        XCTAssertEqual(withCompletion.xp, base.xp + StudyGrowth.videoCompletionXP)
+        XCTAssertEqual(
+            StudyGrowth.totalXP(totalStudyTime: 10 * 60, streakDays: 0, videoCompletionCount: 2),
+            base.xp + StudyGrowth.videoCompletionXP * 2
+        )
     }
 }

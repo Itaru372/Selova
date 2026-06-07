@@ -7,9 +7,14 @@ struct HomeView: View {
     var onOpenSettings: () -> Void
 
     @Query private var studySessions: [StudySession]
+    @Query private var videos: [VideoItem]
 
     var totalStudyTime: TimeInterval {
         studySessions.reduce(0) { $0 + $1.duration }
+    }
+
+    var videoCompletionCount: Int {
+        videos.reduce(0) { $0 + max(0, $1.completionCount ?? 0) }
     }
 
     var body: some View {
@@ -30,6 +35,7 @@ struct HomeView: View {
                     ReturningHomeView(
                         activeVideo: $activeVideo,
                         totalStudyTime: totalStudyTime,
+                        videoCompletionCount: videoCompletionCount,
                         onOpenSettings: onOpenSettings
                     )
                 }
@@ -47,21 +53,13 @@ struct FirstTimeHomeView: View {
     var onStart: () -> Void
 
     @State private var showingAddSheet = false
-    @State private var addDestination: FirstTimeAddDestination = .startNow
+    @State private var showingHelpSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Spacer()
-                Button(action: onOpenSettings) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.headline)
-                        .foregroundColor(TikTokTheme.secondaryText)
-                        .frame(width: 44, height: 44)
-                        .background(TikTokTheme.panelStrong, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("設定")
+                homeHeaderButtons
             }
             .padding(.horizontal, 24)
             .padding(.top, 18)
@@ -80,65 +78,50 @@ struct FirstTimeHomeView: View {
 
             Spacer()
 
-            VStack(spacing: 14) {
-                Button {
-                    addDestination = .startNow
-                    showingAddSheet = true
-                } label: {
-                    Text("今すぐ追加する")
-                        .font(.headline.weight(.semibold))
-                        .foregroundColor(TikTokTheme.primaryText)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(TikTokTheme.pink)
-                        )
-                        .overlay(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(TikTokTheme.cyan.opacity(0.22))
-                                .frame(width: 7)
-                        }
-                        .shadow(color: TikTokTheme.pink.opacity(0.26), radius: 12, x: 0, y: 6)
-                }
-
-                Button {
-                    addDestination = .watchLater
-                    showingAddSheet = true
-                } label: {
-                    Text("後で見るフォルダに追加")
-                        .font(.headline.weight(.semibold))
-                        .foregroundColor(TikTokTheme.primaryText)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(TikTokTheme.panelStrong)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(TikTokTheme.border, lineWidth: 1)
-                        )
-                }
+            HomeVideoCTAButton(
+                title: "動画を追加する",
+                subtitle: "今すぐ再生も、あとで保存もここから",
+                systemImage: "plus.circle.fill",
+                accent: TikTokTheme.pink
+            ) {
+                onStart()
+                showingAddSheet = true
             }
             .padding(.horizontal, 40)
 
             Spacer()
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddVideoSheet(
-                activeVideo: $activeVideo,
-                onAddNow: addDestination == .startNow ? {
-                    onStart()
-                } : nil
-            )
+            AddVideoSheet(activeVideo: $activeVideo)
+        }
+        .sheet(isPresented: $showingHelpSheet) {
+            StudyXPHelpSheet()
         }
     }
-}
 
-private enum FirstTimeAddDestination {
-    case startNow
-    case watchLater
+    private var homeHeaderButtons: some View {
+        HStack(spacing: 10) {
+            Button(action: { showingHelpSheet = true }) {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.headline)
+                    .foregroundColor(TikTokTheme.secondaryText)
+                    .frame(width: 44, height: 44)
+                    .background(TikTokTheme.panelStrong, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("XPのヘルプ")
+
+            Button(action: onOpenSettings) {
+                Image(systemName: "gearshape.fill")
+                    .font(.headline)
+                    .foregroundColor(TikTokTheme.secondaryText)
+                    .frame(width: 44, height: 44)
+                    .background(TikTokTheme.panelStrong, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("設定")
+        }
+    }
 }
 
 #Preview("HomeView") {
@@ -160,5 +143,93 @@ private struct HomeViewPreviewHost: View {
             onOpenSettings: {}
         )
         .modelContainer(previewContainer)
+    }
+}
+
+struct StudyXPHelpSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    helpCard(
+                        title: "XP の基本",
+                        icon: "sparkles",
+                        content: [
+                            "1分視聴ごとに 10 XP",
+                            "連続学習 1日ごとに 40 XP",
+                            "動画を最後まで見ると 1本ごとに 50 XP"
+                        ]
+                    )
+
+                    helpCard(
+                        title: "レベルアップ",
+                        icon: "arrow.up.right.circle.fill",
+                        content: [
+                            "総 XP が増えると Lv. が上がります",
+                            "必要 XP はレベルが上がるほど少しずつ増えます",
+                            "ホームの XP 表示は、動画完了ボーナスも含めて更新されます"
+                        ]
+                    )
+
+                    helpCard(
+                        title: "通知",
+                        icon: "bell.badge.fill",
+                        content: [
+                            "離脱後の通知をオンにすると、動画モードを 20 秒以上見た後に閉じた場合だけ通知します",
+                            "通知は「即時」「5分後」「10分後」の3段階です",
+                            "設定画面で許可状態を確認・変更できます"
+                        ]
+                    )
+                }
+                .padding(20)
+            }
+            .background(TikTokTheme.background)
+            .navigationTitle("ヘルプ")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("閉じる") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func helpCard(title: String, icon: String, content: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.headline.weight(.bold))
+                    .foregroundColor(TikTokTheme.pink)
+                    .frame(width: 34, height: 34)
+                    .background(TikTokTheme.pink.opacity(0.12), in: Circle())
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundColor(TikTokTheme.primaryText)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(content, id: \.self) { line in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("•")
+                            .foregroundColor(TikTokTheme.readableBlue)
+                        Text(line)
+                            .foregroundColor(TikTokTheme.secondaryText)
+                    }
+                    .font(.subheadline)
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(TikTokTheme.panelStrong)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(TikTokTheme.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
