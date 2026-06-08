@@ -53,15 +53,7 @@ struct AddVideoSheet: View {
         NavigationStack {
             Form {
                 Section(header: Text("種類")) {
-                    Picker("ソース", selection: $selectedType) {
-                        sourcePickerLabel(title: "ローカル", type: .local)
-                            .tag(VideoType.local)
-                        sourcePickerLabel(title: "YouTube", type: .youtube)
-                            .tag(VideoType.youtube)
-                        sourcePickerLabel(title: "Vimeo", type: .vimeo)
-                            .tag(VideoType.vimeo)
-                    }
-                    .pickerStyle(.menu)
+                    sourceSegmentedControl
                 }
                 .listRowBackground(TikTokTheme.elevatedBackground)
 
@@ -70,20 +62,18 @@ struct AddVideoSheet: View {
                         if urlString.isEmpty {
                             HStack(spacing: 12) {
                                 PhotosPicker(selection: $selectedPhotoItem, matching: .videos) {
-                                    uploadButtonLabel(title: "写真", systemImage: "photo.on.rectangle.angled")
+                                    uploadButtonLabel(title: "写真", systemImage: "photo.on.rectangle.angled", isProminent: false)
                                         .frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .tint(TikTokTheme.actionBlue)
+                                .buttonStyle(.plain)
                                 
                                 Button {
                                     showingFileImporter = true
                                 } label: {
-                                    uploadButtonLabel(title: "ファイル", systemImage: "doc.fill")
+                                    uploadButtonLabel(title: "ファイル", systemImage: "doc.fill", isProminent: false)
                                         .frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .tint(TikTokTheme.actionBlue)
+                                .buttonStyle(.plain)
                             }
                         } else {
                             selectedLocalVideoRow
@@ -240,28 +230,42 @@ struct AddVideoSheet: View {
             }
         }
     }
-    
-    @ViewBuilder
-    private func sourcePickerLabel(title: String, type: VideoType) -> some View {
-        HStack(spacing: 8) {
-            sourceIcon(for: type)
-                .frame(width: 24, height: 24)
-            
-            Text(title)
-                .foregroundStyle(TikTokTheme.primaryText)
+
+    private var sourceSegmentedControl: some View {
+        Picker("ソース", selection: $selectedType) {
+            Label("ローカル", systemImage: "folder.fill")
+                .tag(VideoType.local)
+            Label("YouTube", systemImage: "play.rectangle.fill")
+                .tag(VideoType.youtube)
+            Label("Vimeo", systemImage: "v.circle.fill")
+                .tag(VideoType.vimeo)
         }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .tint(TikTokTheme.readableBlue)
     }
 
     @ViewBuilder
-    private func uploadButtonLabel(title: String, systemImage: String) -> some View {
-        HStack(spacing: 8) {
+    private func uploadButtonLabel(title: String, systemImage: String, isProminent: Bool = true) -> some View {
+        HStack(spacing: 10) {
             Image(systemName: systemImage)
                 .imageScale(.medium)
                 .symbolRenderingMode(.monochrome)
             Text(title)
         }
         .font(.headline.weight(.semibold))
-        .foregroundStyle(.white)
+        .foregroundStyle(isProminent ? .white : TikTokTheme.readableBlue)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 18)
+        .frame(minHeight: 48)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isProminent ? TikTokTheme.actionBlue : TikTokTheme.readableBlue.opacity(0.11))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(TikTokTheme.readableBlue.opacity(isProminent ? 0 : 0.16), lineWidth: 1)
+        )
     }
 
     @ViewBuilder

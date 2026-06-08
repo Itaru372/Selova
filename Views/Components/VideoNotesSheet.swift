@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-struct VideoNotesSheet: View {
+struct VideoNotesEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -24,26 +24,15 @@ struct VideoNotesSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                quickAddSection
+        VStack(spacing: 0) {
+            quickAddSection
 
-                Divider()
-                    .overlay(TikTokTheme.border)
+            Divider()
+                .overlay(TikTokTheme.border)
 
-                notesList
-            }
-            .background(TikTokTheme.background)
-            .navigationTitle("メモ")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("閉じる") {
-                        dismiss()
-                    }
-                }
-            }
+            notesList
         }
+        .background(TikTokTheme.background)
         .tint(TikTokTheme.readableBlue)
     }
 
@@ -51,9 +40,9 @@ struct VideoNotesSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Button {
-                    addCurrentTimestamp()
+                    insertCurrentTimestamp()
                 } label: {
-                    Label(currentTimestampLabel, systemImage: "plus.circle.fill")
+                    Label(currentTimestampLabel, systemImage: "clock.badge.checkmark")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
@@ -63,20 +52,6 @@ struct VideoNotesSheet: View {
                 .background(TikTokTheme.pink, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .disabled(currentTime == nil)
 
-                Button {
-                    addManualTimestamp()
-                } label: {
-                    Image(systemName: "text.badge.plus")
-                        .font(.headline.weight(.semibold))
-                        .frame(width: 46, height: 46)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(TikTokTheme.primaryText)
-                .background(TikTokTheme.panelStrong, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .accessibilityLabel("手動タイムスタンプを追加")
-            }
-
-            HStack(spacing: 10) {
                 TextField("20:15 または 1:05:30", text: $manualTimestampText)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.numbersAndPunctuation)
@@ -84,13 +59,30 @@ struct VideoNotesSheet: View {
                     .padding(.horizontal, 12)
                     .frame(height: 42)
                     .background(TikTokTheme.panelStrong, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            }
 
+            HStack(spacing: 10) {
                 TextField("短いメモ", text: $noteText)
                     .textInputAutocapitalization(.sentences)
                     .lineLimit(1)
+                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 12)
                     .frame(height: 42)
                     .background(TikTokTheme.panelStrong, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+
+                Button {
+                    addManualTimestamp()
+                } label: {
+                    Text("メモを追加")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(minWidth: 92)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 11)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .background(TikTokTheme.readableBlue, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .disabled(manualTimestampText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
 
             if let timestampError {
@@ -167,14 +159,14 @@ struct VideoNotesSheet: View {
     }
 
     private var currentTimestampLabel: String {
-        guard let currentTime else { return "現在位置を追加" }
-        return "\(VideoTimestampFormatter.string(from: currentTime)) を追加"
+        guard let currentTime else { return "現在位置を挿入" }
+        return "\(VideoTimestampFormatter.string(from: currentTime)) を挿入"
     }
 
-    private func addCurrentTimestamp() {
+    private func insertCurrentTimestamp() {
         guard let currentTime else { return }
-        addNote(timestamp: currentTime)
-        manualTimestampText = ""
+        manualTimestampText = VideoTimestampFormatter.string(from: currentTime)
+        timestampError = nil
     }
 
     private func addManualTimestamp() {
@@ -210,5 +202,35 @@ struct VideoNotesSheet: View {
     private func noteText(for note: VideoNote) -> String {
         let trimmed = note.text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "メモなし" : trimmed
+    }
+}
+
+struct VideoNotesSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var video: VideoItem
+    var currentTime: TimeInterval?
+    var isInStudyMode: Bool
+    var onJump: (TimeInterval) -> Void
+
+    var body: some View {
+        NavigationStack {
+            VideoNotesEditor(
+                video: video,
+                currentTime: currentTime,
+                isInStudyMode: isInStudyMode,
+                onJump: onJump
+            )
+            .navigationTitle("メモ")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("閉じる") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .tint(TikTokTheme.readableBlue)
     }
 }

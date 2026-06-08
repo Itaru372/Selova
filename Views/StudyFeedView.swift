@@ -86,7 +86,9 @@ struct StudyFeedView: View {
     
     @ViewBuilder
     private func videoPage(in size: CGSize) -> some View {
-        if video.type == .local {
+        if showingNotes && size.width < size.height {
+            portraitNotesVideoPage(in: size)
+        } else if video.type == .local {
             if size.width > size.height {
                 landscapeVideoPage(in: size)
             } else {
@@ -100,7 +102,95 @@ struct StudyFeedView: View {
             }
         }
     }
-    
+
+    private func portraitNotesVideoPage(in size: CGSize) -> some View {
+        let topHeight = size.height * 0.48
+
+        return ZStack {
+            VStack(spacing: 0) {
+                ZStack {
+                    Color.black
+                    playerContainer(gravity: .resizeAspect)
+                }
+                .frame(width: size.width, height: topHeight)
+                .clipped()
+                .overlay(
+                    backButton
+                        .zIndex(3),
+                    alignment: .topLeading
+                )
+
+                notesSplitPanel(
+                    in: size,
+                    topHeight: topHeight
+                )
+            }
+
+            if let playbackError {
+                playbackErrorView(playbackError)
+                    .padding(.horizontal, 28)
+                    .zIndex(4)
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .sheet(isPresented: $showingNotes) {
+            notesSheet
+        }
+    }
+
+    private func notesSplitPanel(in size: CGSize, topHeight: CGFloat) -> some View {
+        let bottomHeight = max(size.height - topHeight, 0)
+
+        return VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("メモ")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(TikTokTheme.primaryText)
+                    Text("動画を止めずに、位置だけ残せます")
+                        .font(.caption)
+                        .foregroundStyle(TikTokTheme.secondaryText)
+                }
+
+                Spacer(minLength: 0)
+
+                Button {
+                    withAnimation(.smooth(duration: 0.18)) {
+                        showingNotes = false
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(TikTokTheme.primaryText)
+                        .frame(width: 34, height: 34)
+                        .background(TikTokTheme.panelStrong, in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 14)
+            .padding(.bottom, 12)
+
+            Divider()
+                .overlay(TikTokTheme.border)
+
+            VideoNotesEditor(
+                video: video,
+                currentTime: currentPlaybackTime,
+                isInStudyMode: true,
+                onJump: seekToTimestamp
+            )
+        }
+        .frame(width: size.width, height: bottomHeight)
+        .background(TikTokTheme.background)
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(TikTokTheme.border.opacity(0.9), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.28), radius: 18, x: 0, y: -4)
+    }
+
     private func webLandscapeVideoPage(in size: CGSize) -> some View {
         ZStack {
             feedPageSurface(in: size) {
@@ -123,6 +213,9 @@ struct StudyFeedView: View {
                 .zIndex(3)
         }
         .frame(width: size.width, height: size.height)
+        .sheet(isPresented: $showingNotes) {
+            notesSheet
+        }
     }
     
     private func webPortraitVideoPage(in size: CGSize) -> some View {
@@ -161,6 +254,9 @@ struct StudyFeedView: View {
                 .zIndex(3)
         }
         .frame(width: size.width, height: size.height)
+        .sheet(isPresented: $showingNotes) {
+            notesSheet
+        }
     }
     
     private func landscapeVideoPage(in size: CGSize) -> some View {
@@ -185,6 +281,9 @@ struct StudyFeedView: View {
                 .zIndex(3)
         }
         .frame(width: size.width, height: size.height)
+        .sheet(isPresented: $showingNotes) {
+            notesSheet
+        }
     }
     
     private func portraitVideoPage(in size: CGSize) -> some View {
@@ -296,12 +395,14 @@ struct StudyFeedView: View {
     private func feedSwipeGesture(in size: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 28)
             .onChanged { value in
+                guard !showingNotes else { return }
                 guard size.height >= size.width else { return }
                 guard !isPaging else { return }
                 guard abs(value.translation.height) > abs(value.translation.width) else { return }
                 swipeOffset = clamped(value.translation.height, min: -size.height, max: size.height)
             }
             .onEnded { value in
+                guard !showingNotes else { return }
                 guard size.height >= size.width else { return }
                 guard !isPaging else { return }
                 guard abs(value.translation.height) > abs(value.translation.width) else {
@@ -559,8 +660,10 @@ struct StudyFeedView: View {
     
     private var noteButton: some View {
         Button {
-            pauseForNotes()
-            showingNotes = true
+            withAnimation(.smooth(duration: 0.2)) {
+                showingNotes = true
+                swipeOffset = 0
+            }
         } label: {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: "note.text.badge.plus")
@@ -588,17 +691,6 @@ struct StudyFeedView: View {
         .padding(.trailing, 20)
         .padding(.top, 54)
         .accessibilityLabel("メモ")
-        .sheet(isPresented: $showingNotes) {
-            VideoNotesSheet(
-                video: video,
-                currentTime: currentPlaybackTime,
-                isInStudyMode: true,
-                onJump: seekToTimestamp
-            )
-            .presentationDetents([.fraction(0.50), .large])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(TikTokTheme.background)
-        }
     }
     
     private var completionScreen: some View {
@@ -696,14 +788,6 @@ struct StudyFeedView: View {
             return currentTime
         }
         return Self.validPlaybackTime(video.lastPlaybackTime) ?? webPlaybackStartTime
-    }
-    
-    private func pauseForNotes() {
-        if video.type == .local {
-            player?.pause()
-        } else {
-            webPauseToken = UUID()
-        }
     }
     
     private func seekToTimestamp(_ timestamp: TimeInterval) {
@@ -963,6 +1047,18 @@ struct StudyFeedView: View {
     
     private func cancelCloseReminderNotifications() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: closeReminderNotificationIDs)
+    }
+
+    private var notesSheet: some View {
+        VideoNotesSheet(
+            video: video,
+            currentTime: currentPlaybackTime,
+            isInStudyMode: true,
+            onJump: seekToTimestamp
+        )
+        .presentationDetents([.fraction(0.50), .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(TikTokTheme.background)
     }
     
 }
