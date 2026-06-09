@@ -7,9 +7,6 @@ struct LibraryView: View {
     @Query(filter: #Predicate<FolderItem> { $0.parent == nil }, sort: \FolderItem.createdAt)
     private var rootFolders: [FolderItem]
 
-    @Query(filter: #Predicate<VideoItem> { $0.folder == nil }, sort: \VideoItem.createdAt)
-    private var rootVideos: [VideoItem]
-
     @Query(sort: \FolderItem.createdAt)
     private var allFolders: [FolderItem]
 
@@ -39,7 +36,7 @@ struct LibraryView: View {
     }
 
     private var visibleVideos: [VideoItem] {
-        let videos = isSearching ? allVideos.filter { matchesSearch($0.title) } : rootVideos
+        let videos = isSearching ? allVideos.filter { matchesSearch($0.title) } : allVideos
         return sortedVideos(videos)
     }
 
