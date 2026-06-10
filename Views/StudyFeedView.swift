@@ -133,9 +133,6 @@ struct StudyFeedView: View {
             }
         }
         .frame(width: size.width, height: size.height)
-        .sheet(isPresented: $showingNotes) {
-            notesSheet
-        }
     }
 
     private func notesSplitPanel(in size: CGSize, topHeight: CGFloat) -> some View {
