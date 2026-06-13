@@ -43,6 +43,7 @@ struct AddVideoSheet: View {
     @State private var isSubmitting = false
     @State private var localImportMessage: String?
     @State private var remoteImportMessage: String?
+    @State private var saveErrorMessage: String?
     @State private var pendingPlaybackVideo: VideoItem?
     @State private var showingPlaybackPrompt = false
 
@@ -134,6 +135,12 @@ struct AddVideoSheet: View {
                             .font(.caption)
                             .foregroundColor(TikTokTheme.pink)
                     }
+
+                    if let saveErrorMessage {
+                        Label(saveErrorMessage, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundColor(TikTokTheme.pink)
+                    }
                 }
                 .listRowBackground(TikTokTheme.elevatedBackground)
 
@@ -191,6 +198,7 @@ struct AddVideoSheet: View {
                 thumbnailData = nil
                 localImportMessage = nil
                 remoteImportMessage = nil
+                saveErrorMessage = nil
                 selectedPhotoItem = nil
             }
             .onAppear {
@@ -541,15 +549,37 @@ struct AddVideoSheet: View {
     private func addVideo() {
         guard canAddVideo else { return }
         isSubmitting = true
+        saveErrorMessage = nil
         let video = VideoItem(title: normalizedTitle, urlString: urlString, type: selectedType, duration: duration)
         video.folder = selectedFolder
         video.thumbnailData = thumbnailData
 
         modelContext.insert(video)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.delete(video)
+            if selectedType == .local {
+                deleteLocalVideoFile(named: urlString)
+                clearLocalVideo()
+            }
+            isSubmitting = false
+            saveErrorMessage = "動画を保存できませんでした。空き容量を確認してもう一度試してください"
+            print("Failed to save video: \(error)")
+            return
+        }
 
         pendingPlaybackVideo = video
         showingPlaybackPrompt = true
+    }
+
+    private func deleteLocalVideoFile(named fileName: String) {
+        guard !fileName.isEmpty,
+              let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return
+        }
+        let fileURL = documentsDirectory.appendingPathComponent(fileName)
+        try? FileManager.default.removeItem(at: fileURL)
     }
 
     private func startPlaybackAndDismiss(_ video: VideoItem) {

@@ -30,6 +30,9 @@ struct StudyFeedView: View {
     @State private var shouldStopWebPlayback = false
     @State private var webPauseToken = UUID()
     @State private var showingNotes = false
+    @State private var lastWebProgressSaveTime = Date.distantPast
+    @State private var lastPersistedWebPlaybackSecond = -1
+    @State private var lastPersistedWebDuration: Double?
     
     init(video: VideoItem) {
         self.video = video
@@ -814,7 +817,14 @@ struct StudyFeedView: View {
         shouldStopWebPlayback = true
         persistCurrentPlaybackPosition()
         video.watchedDuration += duration
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            playbackError = "学習記録を保存できませんでした"
+            print("Failed to save study session: \(error)")
+            return
+        }
         
         withAnimation(.smooth(duration: 0.22)) {
             isDismissing = true
@@ -832,7 +842,14 @@ struct StudyFeedView: View {
         }
         video.completionCount = (video.completionCount ?? 0) + 1
         video.lastWatchedAt = Date()
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            playbackError = "完了状態を保存できませんでした"
+            print("Failed to save playback completion: \(error)")
+            return
+        }
         player?.pause()
         withAnimation(.smooth(duration: 0.24)) {
             showingCompletionScreen = true
@@ -1027,19 +1044,59 @@ struct StudyFeedView: View {
             video.lastPlaybackTime = currentTime
         }
         video.lastWatchedAt = Date()
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            playbackError = "再生位置を保存できませんでした"
+            print("Failed to save playback position: \(error)")
+        }
     }
     
     private func updateWebPlaybackProgress(currentTime: Double, duration: Double?) {
         guard !showingCompletionScreen else { return }
-        if let currentTime = Self.validPlaybackTime(currentTime) {
-            video.lastPlaybackTime = currentTime
+        guard let currentTime = Self.validPlaybackTime(currentTime) else { return }
+        let validDuration = duration.flatMap { value -> Double? in
+            guard value.isFinite, value > 0 else { return nil }
+            return value
         }
-        if let duration, duration.isFinite, duration > 0 {
-            video.duration = duration
+
+        if let validDuration,
+           currentTime >= max(validDuration - 0.75, validDuration * 0.98) {
+            video.duration = validDuration
+            video.lastPlaybackTime = validDuration
+            completePlayback()
+            return
         }
-        video.lastWatchedAt = Date()
-        try? modelContext.save()
+
+        let now = Date()
+        let currentSecond = Int(currentTime.rounded(.down))
+        let durationChanged: Bool
+        if let validDuration {
+            durationChanged = lastPersistedWebDuration.map { abs($0 - validDuration) > 0.5 } ?? true
+        } else {
+            durationChanged = false
+        }
+        let progressedEnough = lastPersistedWebPlaybackSecond < 0 || abs(currentSecond - lastPersistedWebPlaybackSecond) >= 5
+        let waitedEnough = now.timeIntervalSince(lastWebProgressSaveTime) >= 5
+
+        guard durationChanged || (progressedEnough && waitedEnough) else { return }
+
+        video.lastPlaybackTime = currentTime
+        if let validDuration {
+            video.duration = validDuration
+            lastPersistedWebDuration = validDuration
+        }
+        video.lastWatchedAt = now
+        do {
+            try modelContext.save()
+            lastWebProgressSaveTime = now
+            lastPersistedWebPlaybackSecond = currentSecond
+        } catch {
+            modelContext.rollback()
+            playbackError = "再生位置を保存できませんでした"
+            print("Failed to save web playback progress: \(error)")
+        }
     }
     
     private func cancelCloseReminderNotifications() {

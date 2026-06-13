@@ -24,36 +24,21 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		8E4A7D012FD1A66000B6B9A1 /* Exceptions for "" folder in "FocusVideoApp" target */ = {
+		8E4A7D012FD1A66000B6B9A1 /* Exceptions for "FocusVideoApp" folder in "FocusVideoApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				.xcodebuildmcp/config.yaml,
-				AGENTS.md,
-				FocusVideoAppTests/StudyProgressTests.swift,
-				FocusVideoAppTests/VideoEmbedURLBuilderTests.swift,
-				Memory/.DS_Store,
-				Memory/.obsidian/app.json,
-				Memory/.obsidian/appearance.json,
-				"Memory/.obsidian/core-plugins.json",
-				Memory/.obsidian/workspace.json,
-				Memory/Current.md,
-				"Memory/Daily/2026-06-03.md",
-				"Memory/Daily/2026-06-04.md",
-				Memory/Decisions.md,
-				Memory/Learned.md,
-				Memory/ProjectMap.md,
-				README.md,
 			);
 			target = 8E860E2F2FC59E4C00D2BC2B /* FocusVideoApp */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		8E860E322FC59E4C00D2BC2B = {
+		8E860E322FC59E4C00D2BC2B /* FocusVideoApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				8E4A7D012FD1A66000B6B9A1 /* Exceptions for "" folder in "FocusVideoApp" target */,
+				8E4A7D012FD1A66000B6B9A1 /* Exceptions for "FocusVideoApp" folder in "FocusVideoApp" target */,
 			);
+			path = FocusVideoApp;
 			sourceTree = "<group>";
 		};
 		8EA100062FD2B00100A10006 /* FocusVideoAppTests */ = {
@@ -89,7 +74,7 @@
 		8E860E272FC59E4C00D2BC2B = {
 			isa = PBXGroup;
 			children = (
-				8E860E322FC59E4C00D2BC2B,
+				8E860E322FC59E4C00D2BC2B /* FocusVideoApp */,
 				8EA100062FD2B00100A10006 /* FocusVideoAppTests */,
 				8E860E312FC59E4C00D2BC2B /* Products */,
 			);

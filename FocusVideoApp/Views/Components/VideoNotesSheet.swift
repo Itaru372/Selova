@@ -174,9 +174,12 @@ struct VideoNotesEditor: View {
             timestampError = "タイムスタンプは 20:15 または 1:05:30 の形で入力してください"
             return
         }
+        if video.duration > 0 && seconds > video.duration {
+            timestampError = "動画の長さを超えない位置を入力してください"
+            return
+        }
 
         addNote(timestamp: seconds)
-        manualTimestampText = ""
     }
 
     private func addNote(timestamp: TimeInterval) {
@@ -187,7 +190,15 @@ struct VideoNotesEditor: View {
             video: video
         )
         modelContext.insert(note)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.delete(note)
+            timestampError = "メモを保存できませんでした。もう一度試してください"
+            print("Failed to save video note: \(error)")
+            return
+        }
+        manualTimestampText = ""
         noteText = ""
     }
 
@@ -196,7 +207,13 @@ struct VideoNotesEditor: View {
         for index in offsets {
             modelContext.delete(notes[index])
         }
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            timestampError = nil
+        } catch {
+            timestampError = "メモを削除できませんでした。もう一度試してください"
+            print("Failed to delete video note: \(error)")
+        }
     }
 
     private func noteText(for note: VideoNote) -> String {

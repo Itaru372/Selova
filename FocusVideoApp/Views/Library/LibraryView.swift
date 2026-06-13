@@ -25,6 +25,7 @@ struct LibraryView: View {
     @State private var videoPendingNotes: VideoItem?
     @State private var searchText = ""
     @State private var sortOption: LibrarySortOption = .createdNewest
+    @State private var operationErrorMessage: String?
 
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -132,6 +133,11 @@ struct LibraryView: View {
                 }
             } message: {
                 Text(folderDeletionMessage)
+            }
+            .alert("操作を完了できませんでした", isPresented: operationErrorBinding) {
+                Button("閉じる", role: .cancel) {}
+            } message: {
+                Text(operationErrorMessage ?? "もう一度試してください")
             }
             .sheet(item: $videoPendingMove) { video in
                 MoveVideoSheet(video: video)
@@ -261,8 +267,9 @@ struct LibraryView: View {
 
         let folder = FolderItem(name: trimmedName)
         modelContext.insert(folder)
-        try? modelContext.save()
-        resetNewFolderForm()
+        if saveLibraryChanges(failureMessage: "フォルダを作成できませんでした") {
+            resetNewFolderForm()
+        }
     }
 
     private func requestFolderDeletion(offsets: IndexSet) {
@@ -271,21 +278,27 @@ struct LibraryView: View {
     }
 
     private func deletePendingFolders() {
+        let videosToRemove = foldersPendingDeletion.flatMap(recursiveVideos)
         for folder in foldersPendingDeletion {
             if activeVideoBelongs(to: folder) {
                 activeVideo = nil
             }
             modelContext.delete(folder)
         }
-        try? modelContext.save()
-        foldersPendingDeletion = []
+        if saveLibraryChanges(failureMessage: "フォルダを削除できませんでした") {
+            deleteLocalFiles(for: videosToRemove)
+            foldersPendingDeletion = []
+        }
     }
 
     private func deleteVideos(offsets: IndexSet) {
+        let videosToRemove = offsets.map { visibleVideos[$0] }
         for index in offsets {
             deleteVideo(visibleVideos[index])
         }
-        try? modelContext.save()
+        if saveLibraryChanges(failureMessage: "動画を削除できませんでした") {
+            deleteLocalFiles(for: videosToRemove)
+        }
     }
 
     private func deleteVideo(_ video: VideoItem) {
@@ -310,8 +323,9 @@ struct LibraryView: View {
         }
 
         folder.name = trimmedName
-        try? modelContext.save()
-        resetEditFolderForm()
+        if saveLibraryChanges(failureMessage: "フォルダ名を保存できませんでした") {
+            resetEditFolderForm()
+        }
     }
 
     private func resetNewFolderForm() {
@@ -339,6 +353,30 @@ struct LibraryView: View {
     private var editFolderNameIsInvalid: Bool {
         guard let folder = folderPendingEdit else { return true }
         return folderNameIsInvalid(editedFolderName, parent: folder.parent, excluding: folder)
+    }
+
+    private var operationErrorBinding: Binding<Bool> {
+        Binding(
+            get: { operationErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    operationErrorMessage = nil
+                }
+            }
+        )
+    }
+
+    private func saveLibraryChanges(failureMessage: String) -> Bool {
+        do {
+            try modelContext.save()
+            operationErrorMessage = nil
+            return true
+        } catch {
+            modelContext.rollback()
+            operationErrorMessage = "\(failureMessage)。もう一度試してください"
+            print("\(failureMessage): \(error)")
+            return false
+        }
     }
 
     private var folderDeletionMessage: String {
@@ -440,6 +478,7 @@ struct FolderDetailView: View {
     @State private var videoPendingNotes: VideoItem?
     @State private var showingAddVideo = false
     @State private var searchText = ""
+    @State private var operationErrorMessage: String?
 
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -549,6 +588,11 @@ struct FolderDetailView: View {
             }
         } message: {
             Text(folderDeletionMessage)
+        }
+        .alert("操作を完了できませんでした", isPresented: operationErrorBinding) {
+            Button("閉じる", role: .cancel) {}
+        } message: {
+            Text(operationErrorMessage ?? "もう一度試してください")
         }
         .sheet(item: $videoPendingMove) { video in
             MoveVideoSheet(video: video)
@@ -662,8 +706,9 @@ struct FolderDetailView: View {
 
         let subfolder = FolderItem(name: trimmedName, parent: folder)
         modelContext.insert(subfolder)
-        try? modelContext.save()
-        resetNewFolderForm()
+        if saveLibraryChanges(failureMessage: "サブフォルダを作成できませんでした") {
+            resetNewFolderForm()
+        }
     }
 
     private func requestFolderDeletion(offsets: IndexSet) {
@@ -672,21 +717,27 @@ struct FolderDetailView: View {
     }
 
     private func deletePendingFolders() {
+        let videosToRemove = foldersPendingDeletion.flatMap(recursiveVideos)
         for folder in foldersPendingDeletion {
             if activeVideoBelongs(to: folder) {
                 activeVideo = nil
             }
             modelContext.delete(folder)
         }
-        try? modelContext.save()
-        foldersPendingDeletion = []
+        if saveLibraryChanges(failureMessage: "フォルダを削除できませんでした") {
+            deleteLocalFiles(for: videosToRemove)
+            foldersPendingDeletion = []
+        }
     }
 
     private func deleteVideos(offsets: IndexSet) {
+        let videosToRemove = offsets.map { visibleVideos[$0] }
         for index in offsets {
             deleteVideo(visibleVideos[index])
         }
-        try? modelContext.save()
+        if saveLibraryChanges(failureMessage: "動画を削除できませんでした") {
+            deleteLocalFiles(for: videosToRemove)
+        }
     }
 
     private func deleteVideo(_ video: VideoItem) {
@@ -711,8 +762,9 @@ struct FolderDetailView: View {
         }
 
         folder.name = trimmedName
-        try? modelContext.save()
-        resetEditFolderForm()
+        if saveLibraryChanges(failureMessage: "フォルダ名を保存できませんでした") {
+            resetEditFolderForm()
+        }
     }
 
     private func resetNewFolderForm() {
@@ -740,6 +792,30 @@ struct FolderDetailView: View {
     private var editFolderNameIsInvalid: Bool {
         guard let folder = folderPendingEdit else { return true }
         return folderNameIsInvalid(editedFolderName, parent: folder.parent, excluding: folder)
+    }
+
+    private var operationErrorBinding: Binding<Bool> {
+        Binding(
+            get: { operationErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    operationErrorMessage = nil
+                }
+            }
+        )
+    }
+
+    private func saveLibraryChanges(failureMessage: String) -> Bool {
+        do {
+            try modelContext.save()
+            operationErrorMessage = nil
+            return true
+        } catch {
+            modelContext.rollback()
+            operationErrorMessage = "\(failureMessage)。もう一度試してください"
+            print("\(failureMessage): \(error)")
+            return false
+        }
     }
 
     private var folderDeletionMessage: String {
@@ -827,6 +903,7 @@ struct MoveVideoSheet: View {
 
     var video: VideoItem
     @State private var selectedFolder: FolderItem?
+    @State private var operationErrorMessage: String?
 
     @Query(sort: \FolderItem.createdAt)
     private var allFolders: [FolderItem]
@@ -865,16 +942,39 @@ struct MoveVideoSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
                         video.folder = selectedFolder
-                        try? modelContext.save()
-                        dismiss()
+                        do {
+                            try modelContext.save()
+                            operationErrorMessage = nil
+                            dismiss()
+                        } catch {
+                            modelContext.rollback()
+                            operationErrorMessage = "保存できませんでした。もう一度試してください"
+                            print("Failed to move video: \(error)")
+                        }
                     }
                 }
             }
             .tint(TikTokTheme.readableBlue)
+            .alert("操作を完了できませんでした", isPresented: operationErrorBinding) {
+                Button("閉じる", role: .cancel) {}
+            } message: {
+                Text(operationErrorMessage ?? "もう一度試してください")
+            }
             .onAppear {
                 selectedFolder = video.folder
             }
         }
+    }
+
+    private var operationErrorBinding: Binding<Bool> {
+        Binding(
+            get: { operationErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    operationErrorMessage = nil
+                }
+            }
+        )
     }
 
     private var sortedFolders: [FolderItem] {
@@ -1096,6 +1196,30 @@ private func recursiveVideoCount(for folder: FolderItem) -> Int {
     let directVideos = folder.videos?.count ?? 0
     let childVideos = (folder.children ?? []).reduce(0) { $0 + recursiveVideoCount(for: $1) }
     return directVideos + childVideos
+}
+
+private func recursiveVideos(_ folder: FolderItem) -> [VideoItem] {
+    let directVideos = folder.videos ?? []
+    let childVideos = (folder.children ?? []).flatMap(recursiveVideos)
+    return directVideos + childVideos
+}
+
+private func deleteLocalFiles(for videos: [VideoItem]) {
+    guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+        return
+    }
+
+    let localFileNames = Set(
+        videos
+            .filter { $0.type == .local }
+            .map(\.urlString)
+            .filter { !$0.isEmpty }
+    )
+
+    for fileName in localFileNames {
+        let fileURL = documentsDirectory.appendingPathComponent(fileName)
+        try? FileManager.default.removeItem(at: fileURL)
+    }
 }
 
 private func folderContainsVideo(_ folder: FolderItem, videoID: UUID) -> Bool {

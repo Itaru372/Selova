@@ -41,7 +41,7 @@ struct HomeView: View {
                 }
             }
             .navigationTitle("Home")
-            .navigationBarHidden(true)
+            .toolbarVisibility(.hidden, for: .navigationBar)
             .background(TikTokTheme.background)
         }
     }
@@ -70,7 +70,7 @@ struct FirstTimeHomeView: View {
                 FirstTimeFocusVisual()
 
                 VStack(spacing: 10) {
-                    Text("Focus Video")
+                    Text("Selova")
                         .font(.system(size: 42, weight: .bold, design: .rounded))
                         .foregroundColor(TikTokTheme.primaryText)
                         .minimumScaleFactor(0.82)
