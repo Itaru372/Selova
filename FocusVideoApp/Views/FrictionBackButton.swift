@@ -12,8 +12,8 @@ struct FrictionBackButton: View {
     // Timer to track how long the user has been on the screen
     let screenTimer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
     
-    // The threshold after which friction is applied (20 seconds)
-    let frictionThreshold: TimeInterval = 20.0
+    // Apply the long-press guard immediately.
+    let frictionThreshold: TimeInterval = 10.0
     // How long to press after friction is applied (5 seconds)
     let requiredPressDuration: TimeInterval = 5.0
     

@@ -969,7 +969,7 @@ struct StudyFeedView: View {
         }
         
         let elapsed = Date().timeIntervalSince(sessionStartTime)
-        guard elapsed >= 20 else { return }
+        guard elapsed >= 10 else { return }
         
         didScheduleCloseReminders = true
         persistCurrentPlaybackPosition()
@@ -991,17 +991,17 @@ struct StudyFeedView: View {
                 (
                     "immediate",
                     nil,
-                    "いま閉じた動画の続きに戻れます。"
+                    "ここで止めると、再開が少し面倒になります。いま戻るのが正解です。"
                 ),
                 (
                     "5min",
                     5 * 60,
-                    "5分経ちました。もう一度だけ続きを見てみませんか。"
+                    "5分経ちました。先延ばしにしないほうが楽です。短く戻りましょう。"
                 ),
                 (
                     "10min",
                     10 * 60,
-                    "10分経ちました。短く再開して流れを戻しましょう。"
+                    "10分経ちました。そろそろ戻りましょう。長く空けるほど再開が重くなります。"
                 )
             ]
             
