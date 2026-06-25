@@ -8,13 +8,65 @@ import ObjectiveC.runtime
 import UIKit
 #endif
 
+enum FeedPagingDirection {
+    case up
+    case down
+}
+
 struct StudyFeedView: View {
+    let initialVideo: VideoItem
+
+    @Query(sort: \VideoItem.createdAt) private var allVideos: [VideoItem]
+    @State private var currentVideoID: UUID
+
+    init(video: VideoItem) {
+        self.initialVideo = video
+        _currentVideoID = State(initialValue: video.id)
+    }
+
+    var body: some View {
+        StudyFeedPageView(
+            video: currentVideo,
+            onFolderPage: advanceInFolder
+        )
+        .id(currentVideo.id)
+    }
+
+    private var currentVideo: VideoItem {
+        allVideos.first(where: { $0.id == currentVideoID }) ?? initialVideo
+    }
+
+    private var folderVideosToContinue: [VideoItem] {
+        guard let folderID = currentVideo.folder?.id else { return [currentVideo] }
+        let candidates = allVideos.filter {
+            $0.folder?.id == folderID && !StudyProgress.isCompleted($0)
+        }
+        return candidates.isEmpty ? [currentVideo] : candidates
+    }
+
+    private func advanceInFolder(_ direction: FeedPagingDirection) -> Bool {
+        let candidates = folderVideosToContinue
+        guard candidates.count > 1,
+              let index = candidates.firstIndex(where: { $0.id == currentVideo.id }) else {
+            return false
+        }
+
+        let offset = direction == .up ? 1 : -1
+        let nextIndex = (index + offset + candidates.count) % candidates.count
+        currentVideoID = candidates[nextIndex].id
+        return true
+    }
+}
+
+struct StudyFeedPageView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     
     var video: VideoItem
+    var onFolderPage: ((FeedPagingDirection) -> Bool)?
     @State private var sessionStartTime = Date()
+    @State private var sessionPlaybackStartTime: TimeInterval = 0
     @State private var player: AVPlayer?
     @State private var endObserver: NSObjectProtocol?
     @State private var itemStatusObserver: NSKeyValueObservation?
@@ -24,6 +76,7 @@ struct StudyFeedView: View {
     @State private var isPaging = false
     @State private var isDismissing = false
     @State private var didScheduleCloseReminders = false
+    @State private var didStartResumeLiveActivity = false
     @State private var showingCompletionScreen = false
     @State private var webPlayerReloadID = UUID()
     @State private var webPlaybackStartTime: Double?
@@ -34,8 +87,12 @@ struct StudyFeedView: View {
     @State private var lastPersistedWebPlaybackSecond = -1
     @State private var lastPersistedWebDuration: Double?
     
-    init(video: VideoItem) {
+    init(
+        video: VideoItem,
+        onFolderPage: ((FeedPagingDirection) -> Bool)? = nil
+    ) {
         self.video = video
+        self.onFolderPage = onFolderPage
         if video.type == .local {
             _player = State(initialValue: Self.makeLocalPlayer(for: video))
         } else {
@@ -67,7 +124,13 @@ struct StudyFeedView: View {
             .onAppear {
                 enableStudyFeedOrientation()
                 sessionStartTime = Date()
+                sessionPlaybackStartTime = currentPlaybackTime ?? 0
                 video.lastWatchedAt = Date()
+                SelovaAnalytics.trackScreen("study_feed")
+                SelovaAnalytics.track(.videoStarted, properties: [
+                    "video_source": video.typeRawValue,
+                    "is_resumed": (video.lastPlaybackTime ?? 0) > 0
+                ])
                 setupPlayer()
                 requestStudyReminderAuthorization()
             }
@@ -396,6 +459,7 @@ struct StudyFeedView: View {
         DragGesture(minimumDistance: 28)
             .onChanged { value in
                 guard !showingNotes else { return }
+                guard !showingCompletionScreen else { return }
                 guard size.height >= size.width else { return }
                 guard !isPaging else { return }
                 guard abs(value.translation.height) > abs(value.translation.width) else { return }
@@ -403,6 +467,7 @@ struct StudyFeedView: View {
             }
             .onEnded { value in
                 guard !showingNotes else { return }
+                guard !showingCompletionScreen else { return }
                 guard size.height >= size.width else { return }
                 guard !isPaging else { return }
                 guard abs(value.translation.height) > abs(value.translation.width) else {
@@ -429,12 +494,7 @@ struct StudyFeedView: View {
             }
     }
     
-    private enum FeedSwipeDirection {
-        case up
-        case down
-    }
-    
-    private func finishVirtualPageSwipe(_ direction: FeedSwipeDirection, height: CGFloat) {
+    private func finishVirtualPageSwipe(_ direction: FeedPagingDirection, height: CGFloat) {
         isPaging = true
         let targetOffset = direction == .up ? -height : height
         
@@ -449,8 +509,20 @@ struct StudyFeedView: View {
                 virtualPage += direction == .up ? 1 : -1
                 swipeOffset = 0
             }
+
+            guard onFolderPage?(direction) == true else {
+                isPaging = false
+                player?.play()
+                return
+            }
+
+            SelovaAnalytics.track(.feedPaged, properties: [
+                "direction": direction == .up ? "next" : "previous",
+                "video_source": video.typeRawValue
+            ])
+            recordScrollAwayEvent()
+            persistCurrentPlaybackPosition()
             isPaging = false
-            player?.play()
         }
     }
     
@@ -660,6 +732,7 @@ struct StudyFeedView: View {
     
     private var noteButton: some View {
         Button {
+            SelovaAnalytics.track(.notesOpened, properties: ["video_source": video.typeRawValue])
             withAnimation(.smooth(duration: 0.2)) {
                 showingNotes = true
                 swipeOffset = 0
@@ -705,7 +778,7 @@ struct StudyFeedView: View {
             }
             
             VStack(spacing: 6) {
-                Text("見終わりました")
+                Text("この動画は完了です")
                     .font(.title2.weight(.bold))
                     .foregroundStyle(.white)
                 Text(video.title)
@@ -715,21 +788,24 @@ struct StudyFeedView: View {
                     .multilineTextAlignment(.center)
             }
             
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .font(.caption.weight(.bold))
-                Text("動画完了ボーナス")
-                    .font(.subheadline.weight(.semibold))
-                Text("+\(StudyGrowth.videoCompletionXP) XP")
-                    .font(.subheadline.weight(.bold))
-                    .monospacedDigit()
-            }
-            .foregroundStyle(TikTokTheme.green)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(TikTokTheme.green.opacity(0.14), in: Capsule())
+            Text("次の動画へ進むか、もう一度見て理解を深めよう")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.72))
+                .multilineTextAlignment(.center)
             
             VStack(spacing: 10) {
+                Button {
+                    continueToNextVideo()
+                } label: {
+                    Label("次の動画へ", systemImage: "arrow.down.circle.fill")
+                        .font(.headline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .background(TikTokTheme.pink, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
                 Button {
                     replayVideo()
                 } label: {
@@ -739,8 +815,8 @@ struct StudyFeedView: View {
                         .padding(.vertical, 14)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.white)
-                .background(TikTokTheme.pink, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .foregroundStyle(.white.opacity(0.9))
+                .background(.white.opacity(0.13), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 
                 Button {
                     finishSessionAndDismiss()
@@ -808,10 +884,9 @@ struct StudyFeedView: View {
     private func finishSessionAndDismiss() {
         guard !isDismissing else { return }
         cancelCloseReminderNotifications()
+        StudyResumeActivityManager.endAll()
         
-        let duration = Date().timeIntervalSince(sessionStartTime)
-        let session = StudySession(startTime: sessionStartTime, duration: duration)
-        modelContext.insert(session)
+        let duration = recordFocusedSegment()
         
         player?.pause()
         shouldStopWebPlayback = true
@@ -837,6 +912,7 @@ struct StudyFeedView: View {
     
     private func completePlayback() {
         guard !showingCompletionScreen else { return }
+        StudyResumeActivityManager.endAll()
         if video.duration > 0 {
             video.lastPlaybackTime = video.duration
         }
@@ -850,6 +926,7 @@ struct StudyFeedView: View {
             print("Failed to save playback completion: \(error)")
             return
         }
+        SelovaAnalytics.track(.videoCompleted, properties: ["video_source": video.typeRawValue])
         player?.pause()
         withAnimation(.smooth(duration: 0.24)) {
             showingCompletionScreen = true
@@ -868,6 +945,16 @@ struct StudyFeedView: View {
             webPlaybackStartTime = 0
             webPlayerReloadID = UUID()
         }
+    }
+
+    private func continueToNextVideo() {
+        showingCompletionScreen = false
+        guard onFolderPage?(.up) == true else {
+            finishSessionAndDismiss()
+            return
+        }
+        _ = recordFocusedSegment()
+        persistCurrentPlaybackPosition()
     }
     
     private func playbackErrorView(_ message: String) -> some View {
@@ -935,18 +1022,32 @@ struct StudyFeedView: View {
         switch newPhase {
         case .active:
             didScheduleCloseReminders = false
+            didStartResumeLiveActivity = false
             cancelCloseReminderNotifications()
+            StudyResumeActivityManager.endAll()
             if oldPhase == .background || oldPhase == .inactive {
                 video.lastWatchedAt = Date()
                 setupPlayer()
             }
+        case .inactive:
+            startResumeLiveActivityIfNeeded()
         case .background:
             scheduleCloseReminderNotificationsIfNeeded()
-        case .inactive:
-            break
         @unknown default:
             break
         }
+    }
+
+    private func startResumeLiveActivityIfNeeded() {
+        guard !didStartResumeLiveActivity else { return }
+        guard StudyPreferences.closeRemindersEnabled else { return }
+        guard StudyPreferences.canScheduleCloseReminderEvent() else { return }
+
+        let elapsed = Date().timeIntervalSince(sessionStartTime)
+        guard elapsed >= 10 else { return }
+
+        didStartResumeLiveActivity = true
+        StudyResumeActivityManager.start(video: video)
     }
     
     private var closeReminderNotificationIDs: [String] {
@@ -984,6 +1085,13 @@ struct StudyFeedView: View {
             center.removePendingNotificationRequests(withIdentifiers: closeReminderNotificationIDs)
             debugCloseReminderLog("scheduling close reminders after \(Int(elapsed))s")
             StudyPreferences.recordCloseReminderEvent()
+            Task { @MainActor in
+                SelovaAnalytics.track(.closeReminderScheduled, properties: [
+                    "video_source": video.typeRawValue,
+                    "reminder_count": 3,
+                    "threshold_seconds": 10
+                ])
+            }
             
             let title = video.title.trimmingCharacters(in: .whitespacesAndNewlines)
             let displayTitle = title.isEmpty ? "学習動画" : title
@@ -1011,6 +1119,11 @@ struct StudyFeedView: View {
                 content.body = reminder.body
                 content.sound = .default
                 content.categoryIdentifier = "study-close-reminder"
+                content.userInfo = [
+                    "source": SelovaResumeRequest.Source.closeReminder.rawValue,
+                    "video_id": video.id.uuidString,
+                    "reminder_id": reminder.id
+                ]
                 
                 let trigger = reminder.delay.map {
                     UNTimeIntervalNotificationTrigger(timeInterval: $0, repeats: false)
@@ -1051,6 +1164,40 @@ struct StudyFeedView: View {
             playbackError = "再生位置を保存できませんでした"
             print("Failed to save playback position: \(error)")
         }
+    }
+
+    private func recordFocusedSegment() -> TimeInterval {
+        let duration = max(0, Date().timeIntervalSince(sessionStartTime))
+        guard duration > 0 else { return 0 }
+        let playbackEndTime = currentPlaybackTime ?? sessionPlaybackStartTime
+        let focusedDuration = min(
+            duration,
+            max(0, playbackEndTime - sessionPlaybackStartTime)
+        )
+        let session = StudySession(
+            startTime: sessionStartTime,
+            duration: duration,
+            focusedDuration: focusedDuration
+        )
+        modelContext.insert(session)
+        SelovaAnalytics.track(.studySessionRecorded, properties: [
+            "duration_seconds": duration,
+            "focused_seconds": focusedDuration,
+            "focus_rate": duration > 0 ? focusedDuration / duration : 0,
+            "video_source": video.typeRawValue
+        ])
+        return duration
+    }
+
+    private func recordScrollAwayEvent() {
+        guard let playbackTime = currentPlaybackTime,
+              playbackTime.isFinite,
+              playbackTime >= 0 else {
+            return
+        }
+        let event = VideoAttentionEvent(playbackTime: playbackTime, video: video)
+        modelContext.insert(event)
+        _ = recordFocusedSegment()
     }
     
     private func updateWebPlaybackProgress(currentTime: Double, duration: Double?) {

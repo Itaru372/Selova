@@ -110,27 +110,40 @@ final class StudyProgressTests: XCTestCase {
     }
 
     func testStudyGrowthLevelStateUsesXPAndStreakBonus() {
-        let withoutStreak = StudyGrowth.levelState(totalStudyTime: 10 * 60, streakDays: 0)
-        let withStreak = StudyGrowth.levelState(totalStudyTime: 10 * 60, streakDays: 3)
+        let withoutStreak = StudyGrowth.levelState(totalFocusedTime: 10 * 60, streakDays: 0)
+        let withStreak = StudyGrowth.levelState(totalFocusedTime: 10 * 60, streakDays: 3)
 
         XCTAssertEqual(withoutStreak.xp, 100)
         XCTAssertGreaterThan(withStreak.xp, withoutStreak.xp)
         XCTAssertGreaterThanOrEqual(withStreak.level, withoutStreak.level)
     }
 
-    func testStudyGrowthLevelStateIncludesVideoCompletionBonus() {
-        let base = StudyGrowth.levelState(totalStudyTime: 10 * 60, streakDays: 0)
-        let withCompletion = StudyGrowth.levelState(
-            totalStudyTime: 10 * 60,
-            streakDays: 0,
-            videoCompletionCount: 1
-        )
-
-        XCTAssertEqual(withCompletion.xp, base.xp + StudyGrowth.videoCompletionXP)
+    func testStudyGrowthUsesFocusedMinutesInsteadOfCompletionCount() {
         XCTAssertEqual(
-            StudyGrowth.totalXP(totalStudyTime: 10 * 60, streakDays: 0, videoCompletionCount: 2),
-            base.xp + StudyGrowth.videoCompletionXP * 2
+            StudyGrowth.totalXP(totalFocusedTime: 10 * 60, streakDays: 0),
+            100
         )
+    }
+
+    func testAttentionGapsOnlyAppearForCompletedVideosWithRepeatedScrolls() {
+        let video = VideoItem(
+            title: "Completed lesson",
+            urlString: "lesson.mov",
+            type: .local,
+            duration: 10 * 60
+        )
+        video.completionCount = 1
+        let first = VideoAttentionEvent(playbackTime: 2 * 60, video: video)
+        let second = VideoAttentionEvent(playbackTime: 2 * 60 + 40, video: video)
+        let separate = VideoAttentionEvent(playbackTime: 7 * 60, video: video)
+        video.attentionEvents = [first, second, separate]
+
+        let gaps = StudyProgress.attentionGaps(for: video)
+
+        XCTAssertEqual(gaps.count, 1)
+        XCTAssertEqual(gaps[0].startTime, 90, accuracy: 0.001)
+        XCTAssertEqual(gaps[0].endTime, 205, accuracy: 0.001)
+        XCTAssertEqual(gaps[0].rangeText, "1:30〜3:25")
     }
 
     func testVideoTimestampFormatterParsesManualTimestamps() {

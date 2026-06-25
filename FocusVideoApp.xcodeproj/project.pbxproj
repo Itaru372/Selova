@@ -6,7 +6,21 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7A00000E2FD2B00100A10001 /* SelovaLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7A0000022FD2B00100A10001 /* SelovaLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7A0000122FD2B00100A10001 /* StudyResumeActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A0000102FD2B00100A10001 /* StudyResumeActivityAttributes.swift */; };
+		7A0000132FD2B00100A10001 /* StudyResumeActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A0000102FD2B00100A10001 /* StudyResumeActivityAttributes.swift */; };
+		7A0000142FD2B00100A10001 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 7A0000152FD2B00100A10001 /* PostHog */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		7A0000052FD2B00100A10001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8E860E282FC59E4C00D2BC2B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7A0000012FD2B00100A10001;
+			remoteInfo = SelovaLiveActivity;
+		};
 		8EA1000B2FD2B00100A1000B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 8E860E282FC59E4C00D2BC2B /* Project object */;
@@ -16,28 +30,37 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		7A00000F2FD2B00100A10001 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7A00000E2FD2B00100A10001 /* SelovaLiveActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		7A0000022FD2B00100A10001 /* SelovaLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SelovaLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A0000102FD2B00100A10001 /* StudyResumeActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyResumeActivityAttributes.swift; sourceTree = "<group>"; };
 		8E250AF42FD5915A0082C8AC /* FocusVideoApp.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FocusVideoApp.xcodeproj; sourceTree = "<group>"; };
 		8E860E302FC59E4C00D2BC2B /* FocusVideoApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusVideoApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8EA100012FD2B00100A10001 /* FocusVideoAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FocusVideoAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8EEACC5B2FD424F5004F0442 /* FocusVideoApp.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FocusVideoApp.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		8E4A7D012FD1A66000B6B9A1 /* Exceptions for "FocusVideoApp" folder in "FocusVideoApp" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-			);
-			target = 8E860E2F2FC59E4C00D2BC2B /* FocusVideoApp */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		7A0000032FD2B00100A10001 /* SelovaLiveActivity */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SelovaLiveActivity;
+			sourceTree = "<group>";
+		};
 		8E860E322FC59E4C00D2BC2B /* FocusVideoApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				8E4A7D012FD1A66000B6B9A1 /* Exceptions for "FocusVideoApp" folder in "FocusVideoApp" target */,
-			);
 			path = FocusVideoApp;
 			sourceTree = "<group>";
 		};
@@ -49,10 +72,18 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		7A0000062FD2B00100A10001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8E860E2D2FC59E4C00D2BC2B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7A0000142FD2B00100A10001 /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -66,6 +97,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		7A0000112FD2B00100A10001 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				7A0000102FD2B00100A10001 /* StudyResumeActivityAttributes.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		8E250AFC2FD5915A0082C8AC /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
@@ -76,6 +115,8 @@
 			children = (
 				8E860E322FC59E4C00D2BC2B /* FocusVideoApp */,
 				8EA100062FD2B00100A10006 /* FocusVideoAppTests */,
+				7A0000032FD2B00100A10001 /* SelovaLiveActivity */,
+				7A0000112FD2B00100A10001 /* Shared */,
 				8E860E312FC59E4C00D2BC2B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -85,6 +126,7 @@
 			children = (
 				8E860E302FC59E4C00D2BC2B /* FocusVideoApp.app */,
 				8EA100012FD2B00100A10001 /* FocusVideoAppTests.xctest */,
+				7A0000022FD2B00100A10001 /* SelovaLiveActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -97,6 +139,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		7A0000012FD2B00100A10001 /* SelovaLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7A00000A2FD2B00100A10001 /* Build configuration list for PBXNativeTarget "SelovaLiveActivity" */;
+			buildPhases = (
+				7A0000042FD2B00100A10001 /* Sources */,
+				7A0000062FD2B00100A10001 /* Frameworks */,
+				7A0000072FD2B00100A10001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7A0000032FD2B00100A10001 /* SelovaLiveActivity */,
+			);
+			name = SelovaLiveActivity;
+			packageProductDependencies = (
+			);
+			productName = SelovaLiveActivity;
+			productReference = 7A0000022FD2B00100A10001 /* SelovaLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		8E860E2F2FC59E4C00D2BC2B /* FocusVideoApp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8E860E3B2FC59E4C00D2BC2B /* Build configuration list for PBXNativeTarget "FocusVideoApp" */;
@@ -104,16 +168,19 @@
 				8E860E2C2FC59E4C00D2BC2B /* Sources */,
 				8E860E2D2FC59E4C00D2BC2B /* Frameworks */,
 				8E860E2E2FC59E4C00D2BC2B /* Resources */,
+				7A00000F2FD2B00100A10001 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7A00000D2FD2B00100A10001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				8E860E322FC59E4C00D2BC2B,
+				8E860E322FC59E4C00D2BC2B /* FocusVideoApp */,
 			);
 			name = FocusVideoApp;
 			packageProductDependencies = (
+				7A0000152FD2B00100A10001 /* PostHog */,
 			);
 			productName = FocusVideoApp;
 			productReference = 8E860E302FC59E4C00D2BC2B /* FocusVideoApp.app */;
@@ -152,6 +219,9 @@
 				LastSwiftUpdateCheck = 2650;
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
+					7A0000012FD2B00100A10001 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 					8E860E2F2FC59E4C00D2BC2B = {
 						CreatedOnToolsVersion = 26.5;
 					};
@@ -171,6 +241,9 @@
 			);
 			mainGroup = 8E860E272FC59E4C00D2BC2B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				7A0000162FD2B00100A10001 /* XCRemoteSwiftPackageReference "posthog-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8E860E312FC59E4C00D2BC2B /* Products */;
 			projectDirPath = "";
@@ -188,11 +261,19 @@
 			targets = (
 				8E860E2F2FC59E4C00D2BC2B /* FocusVideoApp */,
 				8EA100022FD2B00100A10002 /* FocusVideoAppTests */,
+				7A0000012FD2B00100A10001 /* SelovaLiveActivity */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		7A0000072FD2B00100A10001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8E860E2E2FC59E4C00D2BC2B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -210,10 +291,19 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		7A0000042FD2B00100A10001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7A0000122FD2B00100A10001 /* StudyResumeActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8E860E2C2FC59E4C00D2BC2B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7A0000132FD2B00100A10001 /* StudyResumeActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -227,6 +317,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		7A00000D2FD2B00100A10001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7A0000012FD2B00100A10001 /* SelovaLiveActivity */;
+			targetProxy = 7A0000052FD2B00100A10001 /* PBXContainerItemProxy */;
+		};
 		8EA1000C2FD2B00100A1000C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 8E860E2F2FC59E4C00D2BC2B /* FocusVideoApp */;
@@ -235,6 +330,52 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		7A0000082FD2B00100A10001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZXPF859N6C;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "SelovaLiveActivity-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.Selova.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7A0000092FD2B00100A10001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZXPF859N6C;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "SelovaLiveActivity-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.Selova.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		8E860E392FC59E4C00D2BC2B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -367,8 +508,19 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Selova;
+				INFOPLIST_KEY_CFBundleName = Selova;
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					{
+						CFBundleTypeRole = Editor;
+						CFBundleURLName = "$(PRODUCT_BUNDLE_IDENTIFIER)";
+						CFBundleURLSchemes = (
+							selova,
+						);
+					},
+				);
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "学習に使うローカル動画を追加するために写真ライブラリを使用します。";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -379,7 +531,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.FocusVideoApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.Selova;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -402,8 +554,19 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Selova;
+				INFOPLIST_KEY_CFBundleName = Selova;
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					{
+						CFBundleTypeRole = Editor;
+						CFBundleURLName = "$(PRODUCT_BUNDLE_IDENTIFIER)";
+						CFBundleURLSchemes = (
+							selova,
+						);
+					},
+				);
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "学習に使うローカル動画を追加するために写真ライブラリを使用します。";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -414,7 +577,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.FocusVideoApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.Selova;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -441,7 +604,7 @@
 					"@loader_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.FocusVideoAppTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.SelovaTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -466,7 +629,7 @@
 					"@loader_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.FocusVideoAppTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Itaru.SelovaTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -479,6 +642,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		7A00000A2FD2B00100A10001 /* Build configuration list for PBXNativeTarget "SelovaLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7A0000082FD2B00100A10001 /* Debug */,
+				7A0000092FD2B00100A10001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		8E860E2B2FC59E4C00D2BC2B /* Build configuration list for PBXProject "FocusVideoApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -507,6 +679,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		7A0000162FD2B00100A10001 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.59.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		7A0000152FD2B00100A10001 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7A0000162FD2B00100A10001 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8E860E282FC59E4C00D2BC2B /* Project object */;
 }

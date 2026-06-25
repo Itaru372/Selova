@@ -26,9 +26,7 @@ struct AddVideoSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    @Binding var activeVideo: VideoItem?
     var initialFolder: FolderItem? = nil
-    var onAddNow: (() -> Void)? = nil
 
     @State private var selectedType: VideoType = .local
     @State private var urlString = ""
@@ -44,8 +42,6 @@ struct AddVideoSheet: View {
     @State private var localImportMessage: String?
     @State private var remoteImportMessage: String?
     @State private var saveErrorMessage: String?
-    @State private var pendingPlaybackVideo: VideoItem?
-    @State private var showingPlaybackPrompt = false
 
     @Query(sort: \FolderItem.createdAt) private var allFolders: [FolderItem]
     @Query(sort: \VideoItem.createdAt) private var allVideos: [VideoItem]
@@ -145,11 +141,16 @@ struct AddVideoSheet: View {
                 .listRowBackground(TikTokTheme.elevatedBackground)
 
                 Section(header: Text("保存先")) {
-                    Picker("フォルダ", selection: $selectedFolder) {
-                        Text("指定なし").tag(FolderItem?(nil))
-                        ForEach(allFolders) { folder in
-                            Text(folderDisplayName(for: folder))
-                                .tag(FolderItem?(folder))
+                    if allFolders.isEmpty {
+                        Label("先にライブラリでフォルダを作成してください", systemImage: "folder.badge.plus")
+                            .font(.subheadline)
+                            .foregroundStyle(TikTokTheme.secondaryText)
+                    } else {
+                        Picker("フォルダ", selection: $selectedFolder) {
+                            ForEach(allFolders) { folder in
+                                Text(folderDisplayName(for: folder))
+                                    .tag(FolderItem?(folder))
+                            }
                         }
                     }
                 }
@@ -203,7 +204,7 @@ struct AddVideoSheet: View {
             }
             .onAppear {
                 if selectedFolder == nil {
-                    selectedFolder = initialFolder
+                    selectedFolder = initialFolder ?? allFolders.first
                 }
             }
             .fullScreenCover(isPresented: $showingFileImporter) {
@@ -214,27 +215,6 @@ struct AddVideoSheet: View {
                     }
                 }
                 .ignoresSafeArea()
-            }
-            .confirmationDialog(
-                "追加した動画を今すぐ再生しますか？",
-                isPresented: $showingPlaybackPrompt,
-                titleVisibility: .visible
-            ) {
-                Button("今すぐ再生") {
-                    if let pendingPlaybackVideo {
-                        startPlaybackAndDismiss(pendingPlaybackVideo)
-                    }
-                }
-                Button("あとで見る") {
-                    pendingPlaybackVideo = nil
-                    dismiss()
-                }
-                Button("キャンセル", role: .cancel) {
-                    pendingPlaybackVideo = nil
-                    dismiss()
-                }
-            } message: {
-                Text("保存は完了しています。すぐ学習を始めることも、あとでライブラリから開くこともできます。")
             }
         }
     }
@@ -404,7 +384,7 @@ struct AddVideoSheet: View {
     }
 
     private var canAddVideo: Bool {
-        !normalizedTitle.isEmpty && !urlString.isEmpty && !titleIsDuplicate
+        !normalizedTitle.isEmpty && !urlString.isEmpty && selectedFolder != nil && !titleIsDuplicate
     }
 
     private func fetchTitle() async {
@@ -569,8 +549,11 @@ struct AddVideoSheet: View {
             return
         }
 
-        pendingPlaybackVideo = video
-        showingPlaybackPrompt = true
+        SelovaAnalytics.track(.videoAdded, properties: [
+            "stage": "saved",
+            "video_source": selectedType.rawValue
+        ])
+        dismiss()
     }
 
     private func deleteLocalVideoFile(named fileName: String) {
@@ -582,14 +565,6 @@ struct AddVideoSheet: View {
         try? FileManager.default.removeItem(at: fileURL)
     }
 
-    private func startPlaybackAndDismiss(_ video: VideoItem) {
-        pendingPlaybackVideo = nil
-        onAddNow?()
-        dismiss()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            activeVideo = video
-        }
-    }
 }
 
 private struct LocalVideoDocumentPicker: UIViewControllerRepresentable {

@@ -12,17 +12,10 @@ enum StudyGrowth {
 
     static let xpPerMinute = 10
     static let streakXP = 40
-    static let videoCompletionXP = 50
 
-    static func totalXP(totalStudyTime: TimeInterval, streakDays: Int) -> Int {
-        totalXP(totalStudyTime: totalStudyTime, streakDays: streakDays, videoCompletionCount: 0)
-    }
-
-    static func totalXP(totalStudyTime: TimeInterval, streakDays: Int, videoCompletionCount: Int) -> Int {
-        let minutes = max(0, Int(totalStudyTime / 60))
-        return minutes * xpPerMinute
-            + max(0, streakDays) * streakXP
-            + max(0, videoCompletionCount) * videoCompletionXP
+    static func totalXP(totalFocusedTime: TimeInterval, streakDays: Int) -> Int {
+        let focusedMinutes = max(0, Int(totalFocusedTime / 60))
+        return focusedMinutes * xpPerMinute + max(0, streakDays) * streakXP
     }
 
     static func requiredXPToAdvance(from level: Int) -> Int {
@@ -31,16 +24,12 @@ enum StudyGrowth {
         return 100 + step * 65 + step * step * 35
     }
 
-    static func levelState(totalStudyTime: TimeInterval, streakDays: Int) -> LevelState {
-        levelState(totalStudyTime: totalStudyTime, streakDays: streakDays, videoCompletionCount: 0)
+    static func levelState(totalFocusedTime: TimeInterval, streakDays: Int) -> LevelState {
+        let xp = totalXP(totalFocusedTime: totalFocusedTime, streakDays: streakDays)
+        return makeLevelState(xp: xp)
     }
 
-    static func levelState(totalStudyTime: TimeInterval, streakDays: Int, videoCompletionCount: Int) -> LevelState {
-        let xp = totalXP(
-            totalStudyTime: totalStudyTime,
-            streakDays: streakDays,
-            videoCompletionCount: videoCompletionCount
-        )
+    private static func makeLevelState(xp: Int) -> LevelState {
         var remainingXP = xp
         var level = 1
         var requiredXP = requiredXPToAdvance(from: level)

@@ -5,13 +5,20 @@ import UIKit
 #endif
 
 struct ContentView: View {
+    @Query private var videos: [VideoItem]
     @State private var selectedTab = 0
     @State private var activeVideo: VideoItem?
     @State private var showingSettings = false
+    @State private var showingFocusInsights = false
+    @State private var didTrackInitialAppearance = false
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView(activeVideo: $activeVideo) {
+            HomeView(
+                activeVideo: $activeVideo,
+                isFocusInsightsPresented: $showingFocusInsights
+            ) {
+                SelovaAnalytics.track(.settingChanged, properties: ["action": "settings_opened"])
                 showingSettings = true
             }
                 .tabItem {
@@ -28,6 +35,26 @@ struct ContentView: View {
         .tint(TikTokTheme.readableBlue)
         .toolbarBackground(Color.clear, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        .toolbar(showingFocusInsights ? .hidden : .visible, for: .tabBar)
+        .onAppear {
+            guard !didTrackInitialAppearance else { return }
+            didTrackInitialAppearance = true
+            SelovaAnalytics.track(.appLaunched)
+            SelovaAnalytics.trackScreen("home")
+            handlePendingResumeRequestIfNeeded()
+        }
+        .onChange(of: selectedTab) { _, tab in
+            let screen = tab == 0 ? "home" : "library"
+            SelovaAnalytics.track(.tabSelected, properties: ["tab_name": screen])
+            SelovaAnalytics.trackScreen(screen)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: SelovaResumeRoute.notificationName)) { _ in
+            handlePendingResumeRequestIfNeeded()
+        }
+        .onOpenURL { url in
+            guard let request = SelovaResumeRoute.request(from: url) else { return }
+            handleResumeRequest(request)
+        }
         .fullScreenCover(item: $activeVideo) { video in
             StudyFeedView(video: video)
         }
@@ -35,6 +62,34 @@ struct ContentView: View {
             StudySettingsView()
                 .presentationDetents([.medium])
         }
+    }
+
+    private func handlePendingResumeRequestIfNeeded() {
+        guard let request = SelovaResumeRoute.consumePendingRequest() else { return }
+        handleResumeRequest(request)
+    }
+
+    private func handleResumeRequest(_ request: SelovaResumeRequest) {
+        selectedTab = 0
+        showingSettings = false
+        showingFocusInsights = false
+
+        let matchedVideo = request.videoID.flatMap { requestedID in
+            videos.first(where: { $0.id == requestedID })
+        }
+        if let matchedVideo {
+            activeVideo = matchedVideo
+        }
+
+        var properties: [String: Any] = ["source": request.source.rawValue]
+        if let reminderID = request.reminderID {
+            properties["reminder_id"] = reminderID
+        }
+        if let matchedVideo {
+            properties["video_source"] = matchedVideo.typeRawValue
+        }
+
+        SelovaAnalytics.track(.returnToStudy, properties: properties)
     }
 }
 

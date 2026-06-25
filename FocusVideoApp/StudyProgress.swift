@@ -1,6 +1,22 @@
 import Foundation
 
+@MainActor
 enum StudyProgress {
+    struct AttentionGap: Identifiable {
+        let video: VideoItem
+        let startTime: TimeInterval
+        let endTime: TimeInterval
+        let scrollCount: Int
+
+        var id: String {
+            "\(video.id.uuidString)-\(Int(startTime.rounded()))-\(Int(endTime.rounded()))"
+        }
+
+        var rangeText: String {
+            "\(compactPlaybackPosition(startTime))〜\(compactPlaybackPosition(endTime))"
+        }
+    }
+
     static func lastPlaybackPosition(for video: VideoItem) -> TimeInterval {
         guard let playbackTime = video.lastPlaybackTime, playbackTime.isFinite, playbackTime > 0 else {
             return 0
@@ -11,6 +27,63 @@ enum StudyProgress {
     static func progress(for video: VideoItem) -> Double {
         guard video.duration > 0 else { return 0 }
         return min(max(lastPlaybackPosition(for: video) / video.duration, 0), 1)
+    }
+
+    static func isCompleted(_ video: VideoItem) -> Bool {
+        guard video.duration > 0 else {
+            return (video.completionCount ?? 0) > 0
+        }
+        return (video.completionCount ?? 0) > 0 || progress(for: video) >= 0.995
+    }
+
+    static func attentionGaps(for video: VideoItem) -> [AttentionGap] {
+        guard isCompleted(video) else { return [] }
+
+        let eventTimes = (video.attentionEvents ?? [])
+            .map(\.playbackTime)
+            .filter { $0.isFinite && $0 >= 0 }
+            .sorted()
+        guard eventTimes.count >= 2 else { return [] }
+
+        var clusters = [[TimeInterval]]()
+        for eventTime in eventTimes {
+            if let last = clusters.indices.last,
+               let lastTime = clusters[last].last,
+               eventTime - lastTime <= 90 {
+                clusters[last].append(eventTime)
+            } else {
+                clusters.append([eventTime])
+            }
+        }
+
+        return clusters.compactMap { cluster in
+            guard cluster.count >= 2,
+                  let first = cluster.first,
+                  let last = cluster.last else {
+                return nil
+            }
+            let start = max(0, first - 30)
+            let end = video.duration > 0
+                ? min(video.duration, last + 45)
+                : last + 45
+            return AttentionGap(
+                video: video,
+                startTime: start,
+                endTime: max(start + 1, end),
+                scrollCount: cluster.count
+            )
+        }
+    }
+
+    static func attentionRecommendations(from videos: [VideoItem]) -> [AttentionGap] {
+        videos
+            .flatMap(attentionGaps(for:))
+            .sorted {
+                if $0.scrollCount == $1.scrollCount {
+                    return ($0.video.lastWatchedAt ?? .distantPast) > ($1.video.lastWatchedAt ?? .distantPast)
+                }
+                return $0.scrollCount > $1.scrollCount
+            }
     }
 
     static func playbackPositionText(for video: VideoItem) -> String {

@@ -59,6 +59,18 @@ struct StudySettingsView: View {
                 }
             }
             .onAppear(perform: refreshNotificationStatus)
+            .onChange(of: closeRemindersEnabled) { _, isEnabled in
+                SelovaAnalytics.track(.settingChanged, properties: [
+                    "setting_name": "close_reminders_enabled",
+                    "setting_value": isEnabled
+                ])
+            }
+            .onChange(of: closeReminderDailyLimit) { _, limit in
+                SelovaAnalytics.track(.settingChanged, properties: [
+                    "setting_name": "close_reminder_daily_limit",
+                    "setting_value": limit
+                ])
+            }
             .alert("通知が拒否されています", isPresented: $showingNotificationDeniedDialog) {
                 Button("設定を開く") {
                     openAppSettings()

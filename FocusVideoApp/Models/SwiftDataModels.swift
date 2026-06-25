@@ -51,6 +51,9 @@ final class VideoItem {
 
     @Relationship(deleteRule: .cascade, inverse: \VideoNote.video)
     var notes: [VideoNote]?
+
+    @Relationship(deleteRule: .cascade, inverse: \VideoAttentionEvent.video)
+    var attentionEvents: [VideoAttentionEvent]?
     
     var type: VideoType {
         get { VideoType(rawValue: typeRawValue) ?? .youtube }
@@ -97,14 +100,42 @@ final class VideoNote {
 }
 
 @Model
+final class VideoAttentionEvent {
+    var id: UUID
+    var playbackTime: TimeInterval
+    var createdAt: Date
+
+    var video: VideoItem?
+
+    init(
+        id: UUID = UUID(),
+        playbackTime: TimeInterval,
+        createdAt: Date = Date(),
+        video: VideoItem? = nil
+    ) {
+        self.id = id
+        self.playbackTime = playbackTime
+        self.createdAt = createdAt
+        self.video = video
+    }
+}
+
+@Model
 final class StudySession {
     var id: UUID
     var startTime: Date
     var duration: TimeInterval
+    var focusedDuration: TimeInterval = 0
     
-    init(id: UUID = UUID(), startTime: Date = Date(), duration: TimeInterval = 0) {
+    init(
+        id: UUID = UUID(),
+        startTime: Date = Date(),
+        duration: TimeInterval = 0,
+        focusedDuration: TimeInterval? = nil
+    ) {
         self.id = id
         self.startTime = startTime
         self.duration = duration
+        self.focusedDuration = focusedDuration ?? duration
     }
 }

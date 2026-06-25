@@ -6,31 +6,57 @@ import UIKit
 
 struct ReturningHomeView: View {
     @Binding var activeVideo: VideoItem?
-    var totalStudyTime: TimeInterval
-    var videoCompletionCount: Int
+    @Binding var isFocusInsightsPresented: Bool
+    var totalFocusedTime: TimeInterval
     var onOpenSettings: () -> Void
+    var onShowAddVideo: () -> Void
 
-    @State private var showingAddSheet = false
     @State private var showingAllRecommendations = false
     @State private var showingHelpSheet = false
+    @Namespace private var focusInsightsNamespace
     @Query(sort: \StudySession.startTime, order: .reverse) private var studySessions: [StudySession]
     @Query(sort: \VideoItem.createdAt, order: .reverse) private var videos: [VideoItem]
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 18) {
-                heroSection
-                actionCards
-                recommendationsSection
-                Spacer(minLength: 32)
+        ZStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 18) {
+                    heroSection
+                    actionCards
+                    recommendationsSection
+                    Spacer(minLength: 32)
+                }
+                .padding(.top, 48)
             }
-            .padding(.top, 48)
-        }
-        .sheet(isPresented: $showingAddSheet) {
-            AddVideoSheet(activeVideo: $activeVideo)
+            .accessibilityHidden(isFocusInsightsPresented)
+
+            if isFocusInsightsPresented {
+                Color.black
+                    .opacity(0.24)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .accessibilityHidden(true)
+
+                FocusInsightsSheet(
+                    namespace: focusInsightsNamespace,
+                    onDismiss: dismissFocusInsights
+                )
+                .transition(
+                    .asymmetric(
+                        insertion: .scale(scale: 0.985).combined(with: .opacity),
+                        removal: .scale(scale: 0.985).combined(with: .opacity)
+                    )
+                )
+                .zIndex(1)
+            }
         }
         .sheet(isPresented: $showingAllRecommendations) {
             RecommendationListSheet(videos: recommendedVideos) { video in
+                trackRecommendationTap(
+                    kind: "recommended_video",
+                    surface: "recommendation_sheet",
+                    video: video
+                )
                 showingAllRecommendations = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
                     activeVideo = video
@@ -58,19 +84,35 @@ struct ReturningHomeView: View {
                 headerButtons
             }
 
-            Image(growthAssetName)
-                .resizable()
-                .scaledToFit()
-                .frame(height: 176)
-                .frame(maxWidth: .infinity)
-                .transition(.scale.combined(with: .opacity))
-                .animation(.smooth(duration: 0.35), value: growthAssetName)
+            Button {
+                withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+                    isFocusInsightsPresented = true
+                }
+            } label: {
+                VStack(spacing: 6) {
+                    Image(growthAssetName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 176)
+                        .frame(maxWidth: .infinity)
+                        .matchedGeometryEffect(id: "growth-tree", in: focusInsightsNamespace)
+                        .transition(.scale.combined(with: .opacity))
+                        .animation(.smooth(duration: 0.35), value: growthAssetName)
+
+                    Label("集中の記録を見る", systemImage: "chart.xyaxis.line")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(TikTokTheme.secondaryText)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("集中の記録を見る")
+            .accessibilityHint("直近7日間の集中時間と集中率を表示します")
 
             VStack(spacing: 12) {
                 HStack(spacing: 10) {
                     GrowthMetricPill(
-                        title: "今日",
-                        value: todayMinutes > 0 ? "\(todayMinutes)分" : "まず1本",
+                        title: "今日の集中",
+                        value: todayMinutes > 0 ? "\(todayMinutes)分" : "まず集中",
                         systemImage: "clock.fill",
                         accent: TikTokTheme.green
                     )
@@ -105,14 +147,20 @@ struct ReturningHomeView: View {
         .padding(.horizontal, 20)
     }
 
+    private func dismissFocusInsights() {
+        withAnimation(.easeInOut(duration: 0.26)) {
+            isFocusInsightsPresented = false
+        }
+    }
+
     private var actionCards: some View {
         HomeVideoCTAButton(
             title: "動画を追加する",
-            subtitle: "今すぐ再生も、あとで保存もここから",
+            subtitle: "フォルダに入れて、学習の流れを作ろう",
             systemImage: "plus.circle.fill",
             accent: TikTokTheme.pink
         ) {
-            showingAddSheet = true
+            onShowAddVideo()
         }
         .padding(.horizontal, 20)
     }
@@ -133,7 +181,27 @@ struct ReturningHomeView: View {
                     .disabled(recommendedVideos.isEmpty)
             }
 
-            if recommendedVideos.isEmpty {
+            if !attentionRecommendations.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("もう一度集中したいところ")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(TikTokTheme.primaryText)
+
+                    ForEach(attentionRecommendations.prefix(3)) { recommendation in
+                        AttentionRecommendationRow(recommendation: recommendation) {
+                            trackRecommendationTap(
+                                kind: "attention_gap",
+                                surface: "home",
+                                video: recommendation.video
+                            )
+                            recommendation.video.requestedPlaybackTime = recommendation.startTime
+                            activeVideo = recommendation.video
+                        }
+                    }
+                }
+            }
+
+            if recommendedVideos.isEmpty && attentionRecommendations.isEmpty {
                 VStack(spacing: 6) {
                     Text("おすすめ動画がまだありません")
                         .font(.subheadline)
@@ -150,6 +218,11 @@ struct ReturningHomeView: View {
                 VStack(spacing: 10) {
                     ForEach(recommendedVideos.prefix(3)) { video in
                         RecommendationRow(video: video) {
+                            trackRecommendationTap(
+                                kind: "recommended_video",
+                                surface: "home",
+                                video: video
+                            )
                             activeVideo = video
                         }
                     }
@@ -157,6 +230,14 @@ struct ReturningHomeView: View {
             }
         }
         .padding(.horizontal, 20)
+    }
+
+    private func trackRecommendationTap(kind: String, surface: String, video: VideoItem) {
+        SelovaAnalytics.track(.recommendationTapped, properties: [
+            "recommendation_kind": kind,
+            "surface": surface,
+            "video_source": video.typeRawValue
+        ])
     }
 
     private var recommendedVideos: [VideoItem] {
@@ -169,6 +250,10 @@ struct ReturningHomeView: View {
             }
             return lhsScore > rhsScore
         }
+    }
+
+    private var attentionRecommendations: [StudyProgress.AttentionGap] {
+        StudyProgress.attentionRecommendations(from: videos)
     }
 
     private var todayMinutes: Int {
@@ -185,7 +270,7 @@ struct ReturningHomeView: View {
         let end = calendar.date(byAdding: .day, value: 1, to: start) ?? Date()
         return studySessions
             .filter { $0.startTime >= start && $0.startTime < end }
-            .reduce(0) { $0 + $1.duration }
+            .reduce(0) { $0 + $1.focusedDuration }
     }
 
     private var yesterdayStudyTime: TimeInterval {
@@ -194,14 +279,14 @@ struct ReturningHomeView: View {
         let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
         return studySessions
             .filter { $0.startTime >= yesterdayStart && $0.startTime < todayStart }
-            .reduce(0) { $0 + $1.duration }
+            .reduce(0) { $0 + $1.focusedDuration }
     }
 
     private var streakDays: Int {
         let calendar = Calendar.current
         let activeDays = Set(
             studySessions
-                .filter { $0.duration > 0 }
+                .filter { $0.focusedDuration > 0 }
                 .map { calendar.startOfDay(for: $0.startTime) }
         )
         guard !activeDays.isEmpty else { return 0 }
@@ -225,9 +310,8 @@ struct ReturningHomeView: View {
 
     private var levelState: StudyGrowth.LevelState {
         StudyGrowth.levelState(
-            totalStudyTime: totalStudyTime,
-            streakDays: streakDays,
-            videoCompletionCount: videoCompletionCount
+            totalFocusedTime: totalFocusedTime,
+            streakDays: streakDays
         )
     }
 
@@ -236,12 +320,12 @@ struct ReturningHomeView: View {
     }
 
     private var primaryStudyText: String {
-        todayMinutes > 0 ? "今日 \(todayMinutes)分" : "今日の1本を始めよう"
+        todayMinutes > 0 ? "今日 \(todayMinutes)分 集中" : "最初の集中を始めよう"
     }
 
     private var deltaMessage: String {
         guard todayMinutes > 0 else {
-            return "短くても、まず再生すれば木が育ちます"
+            return "同じ動画を見続けると、木が育ちます"
         }
         let sign = deltaMinutes >= 0 ? "+" : ""
         return "昨日より \(sign)\(deltaMinutes)分"
@@ -471,6 +555,51 @@ private struct RecommendationRow: View {
 
     private var durationText: String? {
         StudyProgress.durationText(for: video)
+    }
+}
+
+private struct AttentionRecommendationRow: View {
+    let recommendation: StudyProgress.AttentionGap
+    let onPlay: () -> Void
+
+    var body: some View {
+        Button(action: onPlay) {
+            HStack(spacing: 12) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(TikTokTheme.pink)
+                    .frame(width: 42, height: 42)
+                    .background(TikTokTheme.pink.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(recommendation.video.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(TikTokTheme.primaryText)
+                        .lineLimit(1)
+                    Text("スクロールが多かった区間: \(recommendation.rangeText)")
+                        .font(.caption)
+                        .foregroundStyle(TikTokTheme.secondaryText)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "play.fill")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(7)
+                    .background(TikTokTheme.pink, in: Circle())
+            }
+            .padding(12)
+            .background(TikTokTheme.panelStrong)
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(TikTokTheme.border, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(recommendation.video.title)、集中し直す区間 \(recommendation.rangeText) から再生")
     }
 }
 

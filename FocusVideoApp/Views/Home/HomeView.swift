@@ -4,17 +4,14 @@ import SwiftData
 struct HomeView: View {
     @AppStorage("hasLaunchedBefore") private var hasLaunchedBefore = false
     @Binding var activeVideo: VideoItem?
+    @Binding var isFocusInsightsPresented: Bool
     var onOpenSettings: () -> Void
+    @State private var showingAddSheet = false
 
     @Query private var studySessions: [StudySession]
-    @Query private var videos: [VideoItem]
 
-    var totalStudyTime: TimeInterval {
-        studySessions.reduce(0) { $0 + $1.duration }
-    }
-
-    var videoCompletionCount: Int {
-        videos.reduce(0) { $0 + max(0, $1.completionCount ?? 0) }
+    var totalFocusedTime: TimeInterval {
+        studySessions.reduce(0) { $0 + $1.focusedDuration }
     }
 
     var body: some View {
@@ -29,20 +26,35 @@ struct HomeView: View {
                         onOpenSettings: onOpenSettings,
                         onStart: {
                             hasLaunchedBefore = true
+                        },
+                        onShowAddVideo: {
+                            showingAddSheet = true
                         }
                     )
                 } else {
                     ReturningHomeView(
                         activeVideo: $activeVideo,
-                        totalStudyTime: totalStudyTime,
-                        videoCompletionCount: videoCompletionCount,
-                        onOpenSettings: onOpenSettings
+                        isFocusInsightsPresented: $isFocusInsightsPresented,
+                        totalFocusedTime: totalFocusedTime,
+                        onOpenSettings: onOpenSettings,
+                        onShowAddVideo: {
+                            showingAddSheet = true
+                        }
                     )
                 }
             }
             .navigationTitle("Home")
             .toolbarVisibility(.hidden, for: .navigationBar)
+            .toolbar(isFocusInsightsPresented ? .hidden : .visible, for: .tabBar)
             .background(TikTokTheme.background)
+        }
+        .sheet(isPresented: $showingAddSheet) {
+            AddVideoSheet()
+        }
+        .onChange(of: showingAddSheet) { _, isPresented in
+            if isPresented {
+                SelovaAnalytics.track(.videoAdded, properties: ["stage": "started", "entry_point": "home"])
+            }
         }
     }
 }
@@ -51,8 +63,8 @@ struct FirstTimeHomeView: View {
     @Binding var activeVideo: VideoItem?
     var onOpenSettings: () -> Void
     var onStart: () -> Void
+    var onShowAddVideo: () -> Void
 
-    @State private var showingAddSheet = false
     @State private var showingHelpSheet = false
 
     var body: some View {
@@ -75,7 +87,7 @@ struct FirstTimeHomeView: View {
                         .foregroundColor(TikTokTheme.primaryText)
                         .minimumScaleFactor(0.82)
 
-                    Text("1本だけ、最後まで。")
+                    Text("フォルダで、集中して理解する。")
                         .font(.title3.weight(.semibold))
                         .foregroundColor(TikTokTheme.secondaryText)
                 }
@@ -92,19 +104,16 @@ struct FirstTimeHomeView: View {
 
             HomeVideoCTAButton(
                 title: "動画を追加する",
-                subtitle: "今すぐ再生も、あとで保存もここから",
+                subtitle: "フォルダに入れて、学習の流れを作ろう",
                 systemImage: "plus.circle.fill",
                 accent: TikTokTheme.pink
             ) {
                 onStart()
-                showingAddSheet = true
+                onShowAddVideo()
             }
             .padding(.horizontal, 40)
 
             Spacer(minLength: 42)
-        }
-        .sheet(isPresented: $showingAddSheet) {
-            AddVideoSheet(activeVideo: $activeVideo)
         }
         .sheet(isPresented: $showingHelpSheet) {
             StudyXPHelpSheet()
@@ -276,9 +285,10 @@ private struct FirstTimeSourcePill: View {
 
 private struct HomeViewPreviewHost: View {
     @State private var activeVideo: VideoItem?
+    @State private var isFocusInsightsPresented = false
 
     private var previewContainer: ModelContainer {
-        let schema = Schema([FolderItem.self, VideoItem.self, VideoNote.self, StudySession.self])
+        let schema = Schema([FolderItem.self, VideoItem.self, VideoNote.self, VideoAttentionEvent.self, StudySession.self])
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         return try! ModelContainer(for: schema, configurations: [configuration])
     }
@@ -286,6 +296,7 @@ private struct HomeViewPreviewHost: View {
     var body: some View {
         HomeView(
             activeVideo: $activeVideo,
+            isFocusInsightsPresented: $isFocusInsightsPresented,
             onOpenSettings: {}
         )
         .modelContainer(previewContainer)
@@ -303,9 +314,9 @@ struct StudyXPHelpSheet: View {
                         title: "XP の基本",
                         icon: "sparkles",
                         content: [
-                            "1分視聴ごとに 10 XP",
+                            "同じ動画をスクロールせずに見た 1分ごとに 10 XP",
                             "連続学習 1日ごとに 40 XP",
-                            "動画を最後まで見ると 1本ごとに 50 XP"
+                            "動画を切り替えると、その区間の集中時間が確定します"
                         ]
                     )
 
@@ -315,7 +326,7 @@ struct StudyXPHelpSheet: View {
                         content: [
                             "総 XP が増えると Lv. が上がります",
                             "必要 XP はレベルが上がるほど少しずつ増えます",
-                            "ホームの XP 表示は、動画完了ボーナスも含めて更新されます"
+                            "ホームの XP 表示は、集中して見続けた時間で更新されます"
                         ]
                     )
 
@@ -323,7 +334,7 @@ struct StudyXPHelpSheet: View {
                         title: "通知",
                         icon: "bell.badge.fill",
                         content: [
-                            "離脱後の通知をオンにすると、動画モードを 20 秒以上見た後に閉じた場合だけ通知します",
+                            "離脱後の通知をオンにすると、動画モードを 10 秒以上見た後に閉じた場合だけ通知します",
                             "通知は「即時」「5分後」「10分後」の3段階です",
                             "設定画面で許可状態を確認・変更できます"
                         ]

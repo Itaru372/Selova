@@ -19,7 +19,7 @@ sessionDefaultsProfiles:
     simulatorPlatform: iOS Simulator
     useLatestOS: true
     preferXcodebuild: true
-    bundleId: com.Itaru.FocusVideoApp
+    bundleId: com.Itaru.Selova
   temp-ee:
     projectPath: /Users/okazaki_itaru/Documents/Selova/FocusVideoApp.xcodeproj
     scheme: FocusVideoApp
@@ -30,4 +30,4 @@ sessionDefaultsProfiles:
     useLatestOS: true
     preferXcodebuild: true
     bundleId: com.Itaru.FocusVideoApp
-activeSessionDefaultsProfile: temp-ee
+activeSessionDefaultsProfile: live

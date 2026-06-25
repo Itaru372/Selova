@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 #if canImport(UIKit)
 import UIKit
+import UserNotifications
 #endif
 
 #if canImport(UIKit)
@@ -22,9 +23,28 @@ final class AppOrientation {
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
         supportedInterfaceOrientationsFor window: UIWindow?
     ) -> UIInterfaceOrientationMask {
         AppOrientation.shared.supportedOrientations
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        SelovaResumeRoute.handleNotificationResponse(response)
+        completionHandler()
     }
 }
 #endif
@@ -34,6 +54,10 @@ struct FocusVideoAppApp: App {
     #if canImport(UIKit)
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif
+
+    init() {
+        SelovaAnalytics.configure()
+    }
 
     var body: some Scene {
         WindowGroup {

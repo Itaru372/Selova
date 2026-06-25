@@ -268,6 +268,7 @@ struct LibraryView: View {
         let folder = FolderItem(name: trimmedName)
         modelContext.insert(folder)
         if saveLibraryChanges(failureMessage: "フォルダを作成できませんでした") {
+            SelovaAnalytics.track(.folderCreated, properties: ["folder_level": 0])
             resetNewFolderForm()
         }
     }
@@ -611,10 +612,7 @@ struct FolderDetailView: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingAddVideo) {
-            AddVideoSheet(
-                activeVideo: $activeVideo,
-                initialFolder: folder
-            )
+            AddVideoSheet(initialFolder: folder)
         }
     }
 
@@ -912,16 +910,18 @@ struct MoveVideoSheet: View {
         NavigationStack {
             List {
                 Section {
-                    Picker("保存先", selection: $selectedFolder) {
-                        Label("指定なし", systemImage: "tray")
-                            .tag(FolderItem?(nil))
-
-                        ForEach(sortedFolders) { folder in
-                            Text(folderPath(for: folder))
-                                .tag(FolderItem?(folder))
+                    if sortedFolders.isEmpty {
+                        Label("先にフォルダを作成してください", systemImage: "folder.badge.plus")
+                            .foregroundStyle(TikTokTheme.secondaryText)
+                    } else {
+                        Picker("保存先", selection: $selectedFolder) {
+                            ForEach(sortedFolders) { folder in
+                                Text(folderPath(for: folder))
+                                    .tag(FolderItem?(folder))
+                            }
                         }
+                        .pickerStyle(.inline)
                     }
-                    .pickerStyle(.inline)
                 } header: {
                     Text("移動先")
                 } footer: {
@@ -952,6 +952,7 @@ struct MoveVideoSheet: View {
                             print("Failed to move video: \(error)")
                         }
                     }
+                    .disabled(selectedFolder == nil)
                 }
             }
             .tint(TikTokTheme.readableBlue)
@@ -961,7 +962,7 @@ struct MoveVideoSheet: View {
                 Text(operationErrorMessage ?? "もう一度試してください")
             }
             .onAppear {
-                selectedFolder = video.folder
+                selectedFolder = video.folder ?? sortedFolders.first
             }
         }
     }
