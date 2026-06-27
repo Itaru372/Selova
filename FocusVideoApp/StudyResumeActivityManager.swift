@@ -21,7 +21,7 @@ enum StudyResumeActivityManager {
                 content: ActivityContent(state: state, staleDate: nil),
                 pushType: nil
             )
-            SelovaAnalytics.track(.liveActivityStarted, properties: [
+            SelovaAnalytics.trackImmediately(.liveActivityStarted, properties: [
                 "video_source": video.typeRawValue
             ])
         } catch {

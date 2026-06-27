@@ -89,7 +89,7 @@ struct ContentView: View {
             properties["video_source"] = matchedVideo.typeRawValue
         }
 
-        SelovaAnalytics.track(.returnToStudy, properties: properties)
+        SelovaAnalytics.trackImmediately(.returnToStudy, properties: properties)
     }
 }
 

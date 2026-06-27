@@ -1086,7 +1086,7 @@ struct StudyFeedPageView: View {
             debugCloseReminderLog("scheduling close reminders after \(Int(elapsed))s")
             StudyPreferences.recordCloseReminderEvent()
             Task { @MainActor in
-                SelovaAnalytics.track(.closeReminderScheduled, properties: [
+                SelovaAnalytics.trackImmediately(.closeReminderScheduled, properties: [
                     "video_source": video.typeRawValue,
                     "reminder_count": 3,
                     "threshold_seconds": 10

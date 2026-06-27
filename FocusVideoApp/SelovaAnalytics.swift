@@ -35,6 +35,8 @@ enum SelovaAnalytics {
         configuration.captureApplicationLifecycleEvents = false
         configuration.captureElementInteractions = false
         configuration.sessionReplay = false
+        configuration.flushAt = 1
+        configuration.flushIntervalSeconds = 5
         PostHogSDK.shared.setup(configuration)
         isConfigured = true
     }
@@ -44,6 +46,11 @@ enum SelovaAnalytics {
         var privacySafeProperties = properties
         privacySafeProperties["$geoip_disable"] = true
         PostHogSDK.shared.capture(event.rawValue, properties: privacySafeProperties)
+    }
+
+    static func trackImmediately(_ event: Event, properties: [String: Any] = [:]) {
+        track(event, properties: properties)
+        PostHogSDK.shared.flush()
     }
 
     static func trackScreen(_ name: String) {
