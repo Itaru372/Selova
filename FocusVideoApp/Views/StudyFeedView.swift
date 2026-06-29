@@ -621,7 +621,7 @@ struct StudyFeedPageView: View {
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let fileURL = documentsDirectory.appendingPathComponent(video.urlString)
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            playbackError = "ローカル動画ファイルが見つかりません"
+            playbackError = String(localized: "ローカル動画ファイルが見つかりません")
             return
         }
         
@@ -680,7 +680,7 @@ struct StudyFeedPageView: View {
     
     private func playbackFailureMessage(for item: AVPlayerItem) -> String {
         guard let error = item.error as NSError? else {
-            return "ローカル動画を再生できません"
+            return String(localized: "ローカル動画を再生できません")
         }
         
         var details = [
@@ -896,7 +896,7 @@ struct StudyFeedPageView: View {
             try modelContext.save()
         } catch {
             modelContext.rollback()
-            playbackError = "学習記録を保存できませんでした"
+            playbackError = String(localized: "学習記録を保存できませんでした")
             print("Failed to save study session: \(error)")
             return
         }
@@ -922,7 +922,7 @@ struct StudyFeedPageView: View {
             try modelContext.save()
         } catch {
             modelContext.rollback()
-            playbackError = "完了状態を保存できませんでした"
+            playbackError = String(localized: "完了状態を保存できませんでした")
             print("Failed to save playback completion: \(error)")
             return
         }
@@ -1094,22 +1094,22 @@ struct StudyFeedPageView: View {
             }
             
             let title = video.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            let displayTitle = title.isEmpty ? "学習動画" : title
+            let displayTitle = title.isEmpty ? String(localized: "学習動画") : title
             let reminders: [(id: String, delay: TimeInterval?, body: String)] = [
                 (
                     "immediate",
                     nil,
-                    "ここで止めると、再開が少し面倒になります。いま戻るのが正解です。"
+                    String(localized: "ここで止めると、再開が少し面倒になります。いま戻るのが正解です。")
                 ),
                 (
                     "5min",
                     5 * 60,
-                    "5分経ちました。先延ばしにしないほうが楽です。短く戻りましょう。"
+                    String(localized: "5分経ちました。先延ばしにしないほうが楽です。短く戻りましょう。")
                 ),
                 (
                     "10min",
                     10 * 60,
-                    "10分経ちました。そろそろ戻りましょう。長く空けるほど再開が重くなります。"
+                    String(localized: "10分経ちました。そろそろ戻りましょう。長く空けるほど再開が重くなります。")
                 )
             ]
             
@@ -1161,7 +1161,7 @@ struct StudyFeedPageView: View {
             try modelContext.save()
         } catch {
             modelContext.rollback()
-            playbackError = "再生位置を保存できませんでした"
+            playbackError = String(localized: "再生位置を保存できませんでした")
             print("Failed to save playback position: \(error)")
         }
     }
@@ -1241,7 +1241,7 @@ struct StudyFeedPageView: View {
             lastPersistedWebPlaybackSecond = currentSecond
         } catch {
             modelContext.rollback()
-            playbackError = "再生位置を保存できませんでした"
+            playbackError = String(localized: "再生位置を保存できませんでした")
             print("Failed to save web playback progress: \(error)")
         }
     }
@@ -1643,18 +1643,18 @@ private struct WebViewPlayerFixed: UIViewRepresentable {
             
             if providerName == "vimeo" {
                 if errorName == "privacyerror" || errorMessage.contains("privacy") {
-                    return "Vimeo の埋め込み権限がありません。`h=` 付きURLか、埋め込み許可された動画を使ってください。"
+                    return String(localized: "Vimeo の埋め込み権限がありません。`h=` 付きURLか、埋め込み許可された動画を使ってください。")
                 }
                 if errorName == "passworderror" || errorMessage.contains("password") {
-                    return "Vimeo 側でパスワード保護されています。"
+                    return String(localized: "Vimeo 側でパスワード保護されています。")
                 }
                 if errorMessage.contains("video does not exist") || errorMessage.contains("not found") {
-                    return "Vimeo のURLを確認できませんでした。`h=` が必要な動画の可能性があります。"
+                    return String(localized: "Vimeo のURLを確認できませんでした。`h=` が必要な動画の可能性があります。")
                 }
-                return "Vimeo を読み込めませんでした。"
+                return String(localized: "Vimeo を読み込めませんでした。")
             }
             
-            return "動画ページを読み込めません"
+            return String(localized: "動画ページを読み込めません")
         }
         
         private func doubleValue(from value: Any?) -> Double? {

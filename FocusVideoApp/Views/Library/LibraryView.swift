@@ -59,7 +59,7 @@ struct LibraryView: View {
                 }
 
                 if !visibleFolders.isEmpty {
-                    Section(header: Text(isSearching ? "フォルダ検索結果" : "フォルダ")) {
+                    Section(header: Text(isSearching ? String(localized: "フォルダ検索結果") : String(localized: "フォルダ"))) {
                         ForEach(visibleFolders) { folder in
                             folderRow(folder)
                         }
@@ -68,7 +68,7 @@ struct LibraryView: View {
                 }
 
                 if !visibleVideos.isEmpty {
-                    Section(header: Text(isSearching ? "動画検索結果" : "動画")) {
+                    Section(header: Text(isSearching ? String(localized: "動画検索結果") : String(localized: "動画"))) {
                         ForEach(visibleVideos) { video in
                             videoRow(video)
                         }
@@ -110,7 +110,7 @@ struct LibraryView: View {
                 }
                 .disabled(folderNameIsInvalid(newFolderName, parent: nil))
             } message: {
-                Text(folderNameError ?? "ライブラリ直下にフォルダを作成します")
+                Text(folderNameError ?? String(localized: "ライブラリ直下にフォルダを作成します"))
             }
             .alert("フォルダ名を編集", isPresented: editFolderBinding) {
                 TextField("フォルダ名", text: $editedFolderName)
@@ -122,7 +122,7 @@ struct LibraryView: View {
                 }
                 .disabled(editFolderNameIsInvalid)
             } message: {
-                Text(folderNameError ?? "同じ場所に同じ名前のフォルダは作成できません")
+                Text(folderNameError ?? String(localized: "同じ場所に同じ名前のフォルダは作成できません"))
             }
             .alert("フォルダを削除しますか？", isPresented: $showingDeleteFolderConfirmation) {
                 Button("キャンセル", role: .cancel) {
@@ -137,7 +137,7 @@ struct LibraryView: View {
             .alert("操作を完了できませんでした", isPresented: operationErrorBinding) {
                 Button("閉じる", role: .cancel) {}
             } message: {
-                Text(operationErrorMessage ?? "もう一度試してください")
+                Text(operationErrorMessage ?? String(localized: "もう一度試してください"))
             }
             .sheet(item: $videoPendingMove) { video in
                 MoveVideoSheet(video: video)
@@ -261,13 +261,15 @@ struct LibraryView: View {
     private func createFolder() {
         let trimmedName = normalizedFolderName(newFolderName)
         guard !folderNameIsInvalid(trimmedName, parent: nil) else {
-            folderNameError = duplicateFolderExists(named: trimmedName, parent: nil) ? "同じ名前のフォルダがすでにあります" : "フォルダ名を入力してください"
+            folderNameError = duplicateFolderExists(named: trimmedName, parent: nil)
+                ? String(localized: "同じ名前のフォルダがすでにあります")
+                : String(localized: "フォルダ名を入力してください")
             return
         }
 
         let folder = FolderItem(name: trimmedName)
         modelContext.insert(folder)
-        if saveLibraryChanges(failureMessage: "フォルダを作成できませんでした") {
+        if saveLibraryChanges(failureMessage: String(localized: "フォルダを作成できませんでした")) {
             SelovaAnalytics.track(.folderCreated, properties: ["folder_level": 0])
             resetNewFolderForm()
         }
@@ -286,7 +288,7 @@ struct LibraryView: View {
             }
             modelContext.delete(folder)
         }
-        if saveLibraryChanges(failureMessage: "フォルダを削除できませんでした") {
+        if saveLibraryChanges(failureMessage: String(localized: "フォルダを削除できませんでした")) {
             deleteLocalFiles(for: videosToRemove)
             foldersPendingDeletion = []
         }
@@ -297,7 +299,7 @@ struct LibraryView: View {
         for index in offsets {
             deleteVideo(visibleVideos[index])
         }
-        if saveLibraryChanges(failureMessage: "動画を削除できませんでした") {
+        if saveLibraryChanges(failureMessage: String(localized: "動画を削除できませんでした")) {
             deleteLocalFiles(for: videosToRemove)
         }
     }
@@ -319,12 +321,14 @@ struct LibraryView: View {
         guard let folder = folderPendingEdit else { return }
         let trimmedName = normalizedFolderName(editedFolderName)
         guard !folderNameIsInvalid(trimmedName, parent: folder.parent, excluding: folder) else {
-            folderNameError = duplicateFolderExists(named: trimmedName, parent: folder.parent, excluding: folder) ? "同じ名前のフォルダがすでにあります" : "フォルダ名を入力してください"
+            folderNameError = duplicateFolderExists(named: trimmedName, parent: folder.parent, excluding: folder)
+                ? String(localized: "同じ名前のフォルダがすでにあります")
+                : String(localized: "フォルダ名を入力してください")
             return
         }
 
         folder.name = trimmedName
-        if saveLibraryChanges(failureMessage: "フォルダ名を保存できませんでした") {
+        if saveLibraryChanges(failureMessage: String(localized: "フォルダ名を保存できませんでした")) {
             resetEditFolderForm()
         }
     }
@@ -374,7 +378,7 @@ struct LibraryView: View {
             return true
         } catch {
             modelContext.rollback()
-            operationErrorMessage = "\(failureMessage)。もう一度試してください"
+            operationErrorMessage = String(localized: "\(failureMessage)。もう一度試してください")
             print("\(failureMessage): \(error)")
             return false
         }
@@ -382,16 +386,22 @@ struct LibraryView: View {
 
     private var folderDeletionMessage: String {
         guard let folder = foldersPendingDeletion.first else {
-            return "選択したフォルダを削除します"
+            return String(localized: "選択したフォルダを削除します")
         }
 
         let folderCount = foldersPendingDeletion.reduce(0) { $0 + descendantFolderCount(for: $1) + 1 }
         let videoCount = foldersPendingDeletion.reduce(0) { $0 + recursiveVideoCount(for: $1) }
 
         if foldersPendingDeletion.count == 1 {
-            return "「\(folder.name)」を削除します。含まれるサブフォルダ \(max(folderCount - 1, 0)) 件、動画 \(videoCount) 件も削除されます。"
+            return String(
+                localized: "「\(folder.name)」を削除します。含まれるサブフォルダ \(max(folderCount - 1, 0)) 件、動画 \(videoCount) 件も削除されます。",
+                comment: "Folder deletion warning. Values are folder name, descendant folder count, and video count."
+            )
         }
-        return "選択した \(foldersPendingDeletion.count) 件のフォルダを削除します。含まれるサブフォルダ \(max(folderCount - foldersPendingDeletion.count, 0)) 件、動画 \(videoCount) 件も削除されます。"
+        return String(
+            localized: "選択した \(foldersPendingDeletion.count) 件のフォルダを削除します。含まれるサブフォルダ \(max(folderCount - foldersPendingDeletion.count, 0)) 件、動画 \(videoCount) 件も削除されます。",
+            comment: "Folder deletion warning. Values are selected folder count, descendant folder count, and video count."
+        )
     }
 
     private func sortedFolders(_ folders: [FolderItem]) -> [FolderItem] {
@@ -566,7 +576,12 @@ struct FolderDetailView: View {
             }
             .disabled(folderNameIsInvalid(newFolderName, parent: folder))
         } message: {
-            Text(folderNameError ?? "「\(folder.name)」内にサブフォルダを作成します")
+            Text(
+                folderNameError ?? String(
+                    localized: "「\(folder.name)」内にサブフォルダを作成します",
+                    comment: "Alert message for creating a subfolder. Value is the parent folder name."
+                )
+            )
         }
         .alert("フォルダ名を編集", isPresented: editFolderBinding) {
             TextField("フォルダ名", text: $editedFolderName)
@@ -578,7 +593,7 @@ struct FolderDetailView: View {
             }
             .disabled(editFolderNameIsInvalid)
         } message: {
-            Text(folderNameError ?? "同じ場所に同じ名前のフォルダは作成できません")
+            Text(folderNameError ?? String(localized: "同じ場所に同じ名前のフォルダは作成できません"))
         }
         .alert("フォルダを削除しますか？", isPresented: $showingDeleteFolderConfirmation) {
             Button("キャンセル", role: .cancel) {
@@ -593,7 +608,7 @@ struct FolderDetailView: View {
         .alert("操作を完了できませんでした", isPresented: operationErrorBinding) {
             Button("閉じる", role: .cancel) {}
         } message: {
-            Text(operationErrorMessage ?? "もう一度試してください")
+            Text(operationErrorMessage ?? String(localized: "もう一度試してください"))
         }
         .sheet(item: $videoPendingMove) { video in
             MoveVideoSheet(video: video)
@@ -698,13 +713,15 @@ struct FolderDetailView: View {
     private func createSubfolder() {
         let trimmedName = normalizedFolderName(newFolderName)
         guard !folderNameIsInvalid(trimmedName, parent: folder) else {
-            folderNameError = duplicateFolderExists(named: trimmedName, parent: folder) ? "同じ名前のフォルダがすでにあります" : "フォルダ名を入力してください"
+            folderNameError = duplicateFolderExists(named: trimmedName, parent: folder)
+                ? String(localized: "同じ名前のフォルダがすでにあります")
+                : String(localized: "フォルダ名を入力してください")
             return
         }
 
         let subfolder = FolderItem(name: trimmedName, parent: folder)
         modelContext.insert(subfolder)
-        if saveLibraryChanges(failureMessage: "サブフォルダを作成できませんでした") {
+        if saveLibraryChanges(failureMessage: String(localized: "サブフォルダを作成できませんでした")) {
             resetNewFolderForm()
         }
     }
@@ -722,7 +739,7 @@ struct FolderDetailView: View {
             }
             modelContext.delete(folder)
         }
-        if saveLibraryChanges(failureMessage: "フォルダを削除できませんでした") {
+        if saveLibraryChanges(failureMessage: String(localized: "フォルダを削除できませんでした")) {
             deleteLocalFiles(for: videosToRemove)
             foldersPendingDeletion = []
         }
@@ -733,7 +750,7 @@ struct FolderDetailView: View {
         for index in offsets {
             deleteVideo(visibleVideos[index])
         }
-        if saveLibraryChanges(failureMessage: "動画を削除できませんでした") {
+        if saveLibraryChanges(failureMessage: String(localized: "動画を削除できませんでした")) {
             deleteLocalFiles(for: videosToRemove)
         }
     }
@@ -755,12 +772,14 @@ struct FolderDetailView: View {
         guard let folder = folderPendingEdit else { return }
         let trimmedName = normalizedFolderName(editedFolderName)
         guard !folderNameIsInvalid(trimmedName, parent: folder.parent, excluding: folder) else {
-            folderNameError = duplicateFolderExists(named: trimmedName, parent: folder.parent, excluding: folder) ? "同じ名前のフォルダがすでにあります" : "フォルダ名を入力してください"
+            folderNameError = duplicateFolderExists(named: trimmedName, parent: folder.parent, excluding: folder)
+                ? String(localized: "同じ名前のフォルダがすでにあります")
+                : String(localized: "フォルダ名を入力してください")
             return
         }
 
         folder.name = trimmedName
-        if saveLibraryChanges(failureMessage: "フォルダ名を保存できませんでした") {
+        if saveLibraryChanges(failureMessage: String(localized: "フォルダ名を保存できませんでした")) {
             resetEditFolderForm()
         }
     }
@@ -810,7 +829,7 @@ struct FolderDetailView: View {
             return true
         } catch {
             modelContext.rollback()
-            operationErrorMessage = "\(failureMessage)。もう一度試してください"
+            operationErrorMessage = String(localized: "\(failureMessage)。もう一度試してください")
             print("\(failureMessage): \(error)")
             return false
         }
@@ -818,16 +837,22 @@ struct FolderDetailView: View {
 
     private var folderDeletionMessage: String {
         guard let folder = foldersPendingDeletion.first else {
-            return "選択したフォルダを削除します"
+            return String(localized: "選択したフォルダを削除します")
         }
 
         let folderCount = foldersPendingDeletion.reduce(0) { $0 + descendantFolderCount(for: $1) + 1 }
         let videoCount = foldersPendingDeletion.reduce(0) { $0 + recursiveVideoCount(for: $1) }
 
         if foldersPendingDeletion.count == 1 {
-            return "「\(folder.name)」を削除します。含まれるサブフォルダ \(max(folderCount - 1, 0)) 件、動画 \(videoCount) 件も削除されます。"
+            return String(
+                localized: "「\(folder.name)」を削除します。含まれるサブフォルダ \(max(folderCount - 1, 0)) 件、動画 \(videoCount) 件も削除されます。",
+                comment: "Folder deletion warning. Values are folder name, descendant folder count, and video count."
+            )
         }
-        return "選択した \(foldersPendingDeletion.count) 件のフォルダを削除します。含まれるサブフォルダ \(max(folderCount - foldersPendingDeletion.count, 0)) 件、動画 \(videoCount) 件も削除されます。"
+        return String(
+            localized: "選択した \(foldersPendingDeletion.count) 件のフォルダを削除します。含まれるサブフォルダ \(max(folderCount - foldersPendingDeletion.count, 0)) 件、動画 \(videoCount) 件も削除されます。",
+            comment: "Folder deletion warning. Values are selected folder count, descendant folder count, and video count."
+        )
     }
 
     private func sortedFolders(_ folders: [FolderItem]) -> [FolderItem] {
@@ -948,7 +973,7 @@ struct MoveVideoSheet: View {
                             dismiss()
                         } catch {
                             modelContext.rollback()
-                            operationErrorMessage = "保存できませんでした。もう一度試してください"
+                            operationErrorMessage = String(localized: "保存できませんでした。もう一度試してください")
                             print("Failed to move video: \(error)")
                         }
                     }
@@ -959,7 +984,7 @@ struct MoveVideoSheet: View {
             .alert("操作を完了できませんでした", isPresented: operationErrorBinding) {
                 Button("閉じる", role: .cancel) {}
             } message: {
-                Text(operationErrorMessage ?? "もう一度試してください")
+                Text(operationErrorMessage ?? String(localized: "もう一度試してください"))
             }
             .onAppear {
                 selectedFolder = video.folder ?? sortedFolders.first
@@ -1041,7 +1066,7 @@ struct VideoLibraryRow: View {
     }
 
     private var statusBadge: some View {
-        Text(StudyProgress.statusText(for: video))
+        Text(StudyProgress.localizedStatusText(for: video))
             .foregroundStyle(statusForeground)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
@@ -1069,7 +1094,7 @@ struct VideoLibraryRow: View {
     }
 
     private var progressText: String {
-        StudyProgress.compactPlaybackPositionText(for: video)
+        StudyProgress.localizedCompactPlaybackPositionText(for: video)
     }
 
     private var hasPlaybackPosition: Bool {
@@ -1091,7 +1116,7 @@ struct VideoLibraryRow: View {
         case .vimeo:
             return "Vimeo"
         case .local:
-            return "ローカル"
+            return String(localized: "ローカル")
         }
     }
 
@@ -1138,15 +1163,15 @@ enum LibrarySortOption: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .createdNewest:
-            return "追加日が新しい順"
+            return String(localized: "追加日が新しい順")
         case .recentlyWatched:
-            return "最近見た順"
+            return String(localized: "最近見た順")
         case .title:
-            return "タイトル順"
+            return String(localized: "タイトル順")
         case .progress:
-            return "進捗順"
+            return String(localized: "進捗順")
         case .createdOldest:
-            return "追加日が古い順"
+            return String(localized: "追加日が古い順")
         }
     }
 

@@ -10,8 +10,8 @@ enum StudyResumeActivityManager {
 
         let title = video.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let state = StudyResumeActivityAttributes.ContentState(
-            videoTitle: title.isEmpty ? "学習動画" : title,
-            message: "Selova に戻って、続きを見よう"
+            videoTitle: title.isEmpty ? String(localized: "学習動画") : title,
+            message: String(localized: "Selova に戻って、続きを見よう")
         )
         let attributes = StudyResumeActivityAttributes(videoID: video.id.uuidString)
 

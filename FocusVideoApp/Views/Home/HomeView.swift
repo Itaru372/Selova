@@ -258,7 +258,7 @@ private struct MiniVideoPage: View {
 }
 
 private struct FirstTimeSourcePill: View {
-    var title: String
+    var title: LocalizedStringResource
     var systemImage: String
 
     var body: some View {
@@ -355,7 +355,7 @@ struct StudyXPHelpSheet: View {
         }
     }
 
-    private func helpCard(title: String, icon: String, content: [String]) -> some View {
+    private func helpCard(title: LocalizedStringResource, icon: String, content: [String]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Image(systemName: icon)
@@ -373,7 +373,7 @@ struct StudyXPHelpSheet: View {
                     HStack(alignment: .top, spacing: 8) {
                         Text("•")
                             .foregroundColor(TikTokTheme.readableBlue)
-                        Text(line)
+                        Text(LocalizedStringKey(line))
                             .foregroundColor(TikTokTheme.secondaryText)
                     }
                     .font(.subheadline)

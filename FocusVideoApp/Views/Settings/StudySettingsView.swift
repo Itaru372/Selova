@@ -8,7 +8,7 @@ struct StudySettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(StudyPreferences.Keys.closeRemindersEnabled) private var closeRemindersEnabled = true
     @AppStorage(StudyPreferences.Keys.closeReminderDailyLimit) private var closeReminderDailyLimit = 2
-    @State private var notificationStatusText = "確認中"
+    @State private var notificationStatusText = String(localized: "確認中")
     @State private var notificationAuthorizationStatus: UNAuthorizationStatus = .notDetermined
     @State private var showingNotificationDeniedDialog = false
 
@@ -87,7 +87,7 @@ struct StudySettingsView: View {
             if settings.authorizationStatus == .denied {
                 DispatchQueue.main.async {
                     showingNotificationDeniedDialog = true
-                    notificationStatusText = "拒否"
+                    notificationStatusText = String(localized: "拒否")
                 }
                 return
             }
@@ -103,17 +103,17 @@ struct StudySettingsView: View {
             let text: String
             switch settings.authorizationStatus {
             case .authorized:
-                text = "許可済み"
+                text = String(localized: "許可済み")
             case .provisional:
-                text = "仮許可"
+                text = String(localized: "仮許可")
             case .denied:
-                text = "拒否"
+                text = String(localized: "拒否")
             case .notDetermined:
-                text = "未設定"
+                text = String(localized: "未設定")
             case .ephemeral:
-                text = "一時許可"
+                text = String(localized: "一時許可")
             @unknown default:
-                text = "不明"
+                text = String(localized: "不明")
             }
 
             DispatchQueue.main.async {
@@ -135,7 +135,9 @@ struct StudySettingsView: View {
     }
 
     private var notificationAuthorizationButtonTitle: String {
-        notificationAuthorizationStatus == .denied ? "通知設定を開く" : "通知を許可する"
+        notificationAuthorizationStatus == .denied
+            ? String(localized: "通知設定を開く")
+            : String(localized: "通知を許可する")
     }
 
     private func openAppSettings() {

@@ -106,6 +106,32 @@ enum StudyProgress {
         return compactPlaybackPosition(playbackTime)
     }
 
+    static func localizedCompactPlaybackPositionText(for video: VideoItem) -> String {
+        let playbackTime = lastPlaybackPosition(for: video)
+        guard playbackTime > 0 else { return String(localized: "未視聴") }
+
+        if video.duration > 0 {
+            return "\(compactPlaybackPosition(playbackTime)) / \(compactPlaybackPosition(video.duration))"
+        }
+        return compactPlaybackPosition(playbackTime)
+    }
+
+    static func localizedPlaybackPositionText(for video: VideoItem) -> String {
+        let playbackTime = lastPlaybackPosition(for: video)
+        guard playbackTime > 0 else { return String(localized: "未視聴") }
+
+        if video.duration > 0 {
+            return String(
+                localized: "\(localizedPlaybackPosition(playbackTime))まで / \(localizedPlaybackPosition(video.duration))",
+                comment: "Playback position label. First value is the current position, second is the full duration."
+            )
+        }
+        return String(
+            localized: "\(localizedPlaybackPosition(playbackTime))まで",
+            comment: "Playback position label when the full duration is unknown."
+        )
+    }
+
     static func statusText(for video: VideoItem) -> String {
         let progress = progress(for: video)
         if progress >= 0.9 {
@@ -122,6 +148,21 @@ enum StudyProgress {
             return "再開候補"
         }
         return "未視聴"
+    }
+
+    static func localizedStatusText(for video: VideoItem) -> String {
+        switch statusText(for: video) {
+        case "あと少し":
+            return String(localized: "あと少し")
+        case "続きから":
+            return String(localized: "続きから")
+        case "最近追加":
+            return String(localized: "最近追加")
+        case "再開候補":
+            return String(localized: "再開候補")
+        default:
+            return String(localized: "未視聴")
+        }
     }
 
     static func durationText(for video: VideoItem) -> String? {
@@ -191,6 +232,20 @@ enum StudyProgress {
             return "\(minutes)分"
         }
         return "\(minutes)分\(remainingSeconds)秒"
+    }
+
+    static func localizedPlaybackPosition(_ seconds: TimeInterval) -> String {
+        let totalSeconds = max(0, Int(seconds.rounded(.down)))
+        let minutes = totalSeconds / 60
+        let remainingSeconds = totalSeconds % 60
+
+        if minutes == 0 {
+            return String(localized: "\(remainingSeconds)秒", comment: "Playback time in seconds.")
+        }
+        if remainingSeconds == 0 {
+            return String(localized: "\(minutes)分", comment: "Playback time in minutes.")
+        }
+        return String(localized: "\(minutes)分\(remainingSeconds)秒", comment: "Playback time in minutes and seconds.")
     }
 
     static func compactPlaybackPosition(_ seconds: TimeInterval) -> String {

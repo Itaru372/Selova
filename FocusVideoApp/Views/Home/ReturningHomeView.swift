@@ -112,14 +112,18 @@ struct ReturningHomeView: View {
                 HStack(spacing: 10) {
                     GrowthMetricPill(
                         title: "今日の集中",
-                        value: todayMinutes > 0 ? "\(todayMinutes)分" : "まず集中",
+                        value: todayMinutes > 0
+                            ? String(localized: "\(todayMinutes)分", comment: "Focused time today in minutes.")
+                            : String(localized: "まず集中"),
                         systemImage: "clock.fill",
                         accent: TikTokTheme.green
                     )
 
                     GrowthMetricPill(
                         title: "連続",
-                        value: streakDays > 0 ? "\(streakDays)日" : "今日から",
+                        value: streakDays > 0
+                            ? String(localized: "\(streakDays)日", comment: "Current study streak in days.")
+                            : String(localized: "今日から"),
                         systemImage: "flame.fill",
                         accent: TikTokTheme.green
                     )
@@ -320,15 +324,17 @@ struct ReturningHomeView: View {
     }
 
     private var primaryStudyText: String {
-        todayMinutes > 0 ? "今日 \(todayMinutes)分 集中" : "最初の集中を始めよう"
+        todayMinutes > 0
+            ? String(localized: "今日 \(todayMinutes)分 集中", comment: "Hero summary for today's focused minutes.")
+            : String(localized: "最初の集中を始めよう")
     }
 
     private var deltaMessage: String {
         guard todayMinutes > 0 else {
-            return "同じ動画を見続けると、木が育ちます"
+            return String(localized: "同じ動画を見続けると、木が育ちます")
         }
         let sign = deltaMinutes >= 0 ? "+" : ""
-        return "昨日より \(sign)\(deltaMinutes)分"
+        return String(localized: "昨日より \(sign)\(deltaMinutes)分", comment: "Difference from yesterday in minutes.")
     }
 
     private var recentFocusFolderID: UUID? {
@@ -366,7 +372,7 @@ struct ReturningHomeView: View {
 }
 
 private struct GrowthMetricPill: View {
-    var title: String
+    var title: LocalizedStringResource
     var value: String
     var systemImage: String
     var accent: Color
@@ -425,8 +431,8 @@ private struct LevelProgressStrip: View {
 }
 
 struct HomeVideoCTAButton: View {
-    var title: String
-    var subtitle: String
+    var title: LocalizedStringResource
+    var subtitle: LocalizedStringResource
     var systemImage: String
     var accent: Color
     var action: () -> Void
@@ -524,7 +530,7 @@ private struct RecommendationRow: View {
     }
 
     private var playbackProgressText: String {
-        StudyProgress.compactPlaybackPositionText(for: video)
+        StudyProgress.localizedCompactPlaybackPositionText(for: video)
     }
 
     private var lastPlaybackPosition: TimeInterval {
@@ -545,12 +551,12 @@ private struct RecommendationRow: View {
         case .vimeo:
             return "Vimeo"
         case .local:
-            return "ローカル"
+            return String(localized: "ローカル")
         }
     }
 
     private var statusText: String {
-        StudyProgress.statusText(for: video)
+        StudyProgress.localizedStatusText(for: video)
     }
 
     private var durationText: String? {
@@ -599,7 +605,12 @@ private struct AttentionRecommendationRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(recommendation.video.title)、集中し直す区間 \(recommendation.rangeText) から再生")
+        .accessibilityLabel(
+            Text(
+                "\(recommendation.video.title)、集中し直す区間 \(recommendation.rangeText) から再生",
+                comment: "Accessibility label for replaying a recommended attention gap. First value is the video title, second is the time range."
+            )
+        )
     }
 }
 

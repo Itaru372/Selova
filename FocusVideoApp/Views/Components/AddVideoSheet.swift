@@ -187,7 +187,7 @@ struct AddVideoSheet: View {
                             await importLocalVideo(from: file.url)
                         }
                     } catch {
-                        localImportMessage = "写真ライブラリから動画を読み込めませんでした"
+                        localImportMessage = String(localized: "写真ライブラリから動画を読み込めませんでした")
                         print("Failed to load video: \(error)")
                     }
                 }
@@ -234,7 +234,7 @@ struct AddVideoSheet: View {
     }
 
     @ViewBuilder
-    private func uploadButtonLabel(title: String, systemImage: String, isProminent: Bool = true) -> some View {
+    private func uploadButtonLabel(title: LocalizedStringResource, systemImage: String, isProminent: Bool = true) -> some View {
         HStack(spacing: 10) {
             Image(systemName: systemImage)
                 .imageScale(.medium)
@@ -302,7 +302,7 @@ struct AddVideoSheet: View {
             thumbnailPreview
             
             VStack(alignment: .leading, spacing: 3) {
-                Text(title.isEmpty ? "選択済みの動画" : title)
+                Text(title.isEmpty ? String(localized: "選択済みの動画") : title)
                     .font(.body)
                     .foregroundStyle(TikTokTheme.primaryText)
                     .lineLimit(1)
@@ -390,7 +390,7 @@ struct AddVideoSheet: View {
     private func fetchTitle() async {
         let trimmedURL = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedURL.isEmpty else {
-            remoteImportMessage = "URLを入力してください"
+            remoteImportMessage = String(localized: "URLを入力してください")
             return
         }
 
@@ -432,7 +432,7 @@ struct AddVideoSheet: View {
                 }
             }
         } catch {
-            remoteImportMessage = "タイトルを取得できませんでした。URLを確認してください"
+            remoteImportMessage = String(localized: "タイトルを取得できませんでした。URLを確認してください")
             print("Failed to fetch title: \(error)")
         }
     }
@@ -449,7 +449,7 @@ struct AddVideoSheet: View {
             let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
             let fileExtension = sourceURL.pathExtension.isEmpty ? "mov" : sourceURL.pathExtension
             let baseName = sourceURL.deletingPathExtension().lastPathComponent
-            let safeBaseName = baseName.isEmpty ? "Local Video" : baseName
+            let safeBaseName = baseName.isEmpty ? String(localized: "ローカル動画") : baseName
             let destinationName = "\(UUID().uuidString)-\(safeBaseName).\(fileExtension)"
             let destinationURL = documentsDirectory.appendingPathComponent(destinationName)
 
@@ -460,12 +460,12 @@ struct AddVideoSheet: View {
             urlString = destinationURL.lastPathComponent
             title = safeBaseName
             duration = await localVideoDuration(for: destinationURL)
-            localImportMessage = isPlayable ? nil : "この動画形式はiOS標準プレイヤーで再生できない可能性があります"
+            localImportMessage = isPlayable ? nil : String(localized: "この動画形式はiOS標準プレイヤーで再生できない可能性があります")
             remoteImportMessage = nil
             thumbnailData = nil
             generateThumbnail(for: destinationURL)
         } catch {
-            localImportMessage = "ローカル動画をコピーできませんでした"
+            localImportMessage = String(localized: "ローカル動画をコピーできませんでした")
             print("Error copying local video: \(error)")
         }
     }
@@ -544,7 +544,7 @@ struct AddVideoSheet: View {
                 clearLocalVideo()
             }
             isSubmitting = false
-            saveErrorMessage = "動画を保存できませんでした。空き容量を確認してもう一度試してください"
+            saveErrorMessage = String(localized: "動画を保存できませんでした。空き容量を確認してもう一度試してください")
             print("Failed to save video: \(error)")
             return
         }

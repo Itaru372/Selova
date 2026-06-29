@@ -191,7 +191,7 @@ struct StudyResumeLiveActivity: Widget {
             Image(systemName: systemImage)
                 .font(.caption2.weight(.bold))
                 .accessibilityHidden(true)
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.caption.weight(.medium))
                 .lineLimit(1)
         }

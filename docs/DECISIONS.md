@@ -1,6 +1,6 @@
 # Selova Decisions
 
-Last updated: 2026-06-25
+Last updated: 2026-06-28
 
 Decision states: `Provisional`, `Accepted`, `Revisit`.
 
@@ -126,6 +126,31 @@ Reason:
 Revisit when:
 
 - 自動判断が重すぎる、またはユーザーが明示的な役割指定運用へ戻したいとき。
+
+## D-008: 多言語対応は日本語既定・英語追加から始める
+
+State: Provisional
+
+Decision:
+
+- `developmentRegion = ja` を維持し、日本語を既定言語として扱う。
+- 初回の追加言語は英語にする。
+- SwiftUI の自然言語キーと String Catalog を使い、内部 target / scheme / bundle ID は変更しない。
+
+Reason:
+
+- 既存文言は日本語で設計されているため、日本語の低圧な学習支援トーンを基準にしたまま海外端末でも最低限読める状態にする。
+- target 名や bundle 名の変更を伴わず、学習ループの既存実装に影響を出しにくい。
+
+Why Needed Question:
+
+- なぜ学習者に必要か？: 端末言語が英語のユーザーでも、動画追加・再開・通知・エラーの意味が分かり、学習を止めにくくするため。
+
+Revisit when:
+
+- 英語以外の対応言語を追加するとき。
+- App Store metadata やスクリーンショットを多言語で用意するとき。
+- 英語訳を実ユーザーまたはネイティブレビューで調整するとき。
 
 ## Open Questions
 

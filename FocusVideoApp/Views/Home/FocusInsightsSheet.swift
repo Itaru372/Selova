@@ -132,7 +132,12 @@ struct FocusInsightsSheet: View {
         HStack(spacing: 10) {
             InsightMetricCard(title: "今日の最長集中", value: durationText(todayLongestFocusedTime), icon: "timer", accent: TikTokTheme.green)
             InsightMetricCard(title: "集中率", value: percentageText(weekFocusRate), icon: "scope", accent: TikTokTheme.readableBlue)
-            InsightMetricCard(title: "連続", value: "\(streakDays)日", icon: "flame.fill", accent: TikTokTheme.pink)
+            InsightMetricCard(
+                title: "連続",
+                value: String(localized: "\(streakDays)日", comment: "Current study streak in days."),
+                icon: "flame.fill",
+                accent: TikTokTheme.pink
+            )
         }
         .opacity(isContentVisible ? 1 : 0)
         .offset(y: isContentVisible ? 0 : 18)
@@ -246,7 +251,11 @@ struct FocusInsightsSheet: View {
         .animation(.smooth(duration: 0.4).delay(0.38), value: isContentVisible)
     }
 
-    private func insightSection<Content: View>(title: String, subtitle: String, @ViewBuilder content: () -> Content) -> some View {
+    private func insightSection<Content: View>(
+        title: LocalizedStringResource,
+        subtitle: LocalizedStringResource,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -322,19 +331,39 @@ struct FocusInsightsSheet: View {
 
     private var insight: (title: String, message: String, icon: String) {
         guard longestFocusTime > 0 else {
-            return ("最初の記録を作ろう", "動画を集中して見ると、ここにあなたのペースが育っていきます。", "leaf.fill")
+            return (
+                String(localized: "最初の記録を作ろう"),
+                String(localized: "動画を集中して見ると、ここにあなたのペースが育っていきます。"),
+                "leaf.fill"
+            )
         }
         if let bestDay = dayMetrics.max(by: { $0.longestFocusedTime < $1.longestFocusedTime }), bestDay.longestFocusedTime > 0 {
-            return ("いちばん長く集中できた日", "\(bestDay.day.formatted(.dateTime.weekday(.wide)))は \(durationText(bestDay.longestFocusedTime)) 集中できました。", "sparkles")
+            return (
+                String(localized: "いちばん長く集中できた日"),
+                String(
+                    localized: "\(bestDay.day.formatted(.dateTime.weekday(.wide)))は \(durationText(bestDay.longestFocusedTime)) 集中できました。",
+                    comment: "Insight sentence. First value is weekday, second is focused duration."
+                ),
+                "sparkles"
+            )
         }
-        return ("続けていこう", "短い集中でも、積み重ねるほど木は育ちます。", "leaf.fill")
+        return (
+            String(localized: "続けていこう"),
+            String(localized: "短い集中でも、積み重ねるほど木は育ちます。"),
+            "leaf.fill"
+        )
     }
 
     private func durationText(_ duration: TimeInterval) -> String {
         let totalMinutes = max(0, Int(duration / 60))
-        if totalMinutes >= 60 { return "\(totalMinutes / 60)時間\(totalMinutes % 60)分" }
-        if duration > 0 && totalMinutes == 0 { return "1分未満" }
-        return "\(totalMinutes)分"
+        if totalMinutes >= 60 {
+            return String(
+                localized: "\(totalMinutes / 60)時間\(totalMinutes % 60)分",
+                comment: "Duration in hours and minutes."
+            )
+        }
+        if duration > 0 && totalMinutes == 0 { return String(localized: "1分未満") }
+        return String(localized: "\(totalMinutes)分", comment: "Duration in minutes.")
     }
 
     private func percentageText(_ value: Double) -> String {
@@ -354,7 +383,7 @@ private struct FocusDayMetric: Identifiable {
 }
 
 private struct InsightMetricCard: View {
-    let title: String
+    let title: LocalizedStringResource
     let value: String
     let icon: String
     let accent: Color

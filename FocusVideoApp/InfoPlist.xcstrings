@@ -1,0 +1,29 @@
+{
+  "sourceLanguage" : "ja",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Selova" } }
+      }
+    },
+    "CFBundleName" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Selova" } }
+      }
+    },
+    "NSPhotoLibraryUsageDescription" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selova uses your photo library so you can add local videos for studying."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.2"
+}

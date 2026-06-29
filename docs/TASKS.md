@@ -1,6 +1,6 @@
 # Selova Tasks
 
-Last updated: 2026-06-25
+Last updated: 2026-06-28
 
 Status keys: `Todo`, `Doing`, `Blocked`, `Done`.
 
@@ -14,6 +14,7 @@ Status keys: `Todo`, `Doing`, `Blocked`, `Done`.
 | Done | iOS Engineer | scheme `FocusVideoApp` で Debug build を確認する | XcodeBuildMCP `build_sim`: succeeded, warnings 0 / errors 0 |
 | Done | PM | 初回リリースのプロダクト約束を仮固定する | 「保存した学習動画を、フォルダごとに続きから再開し、1本ずつ最後まで見やすくする」 |
 | Done | PM | 既存機能を must / should / later に分類する | `docs/PRODUCT_SPEC.md` に反映 |
+| Done | iOS Engineer | 多言語対応の土台を追加する | 日本語既定・英語追加として `Localizable.xcstrings` / `InfoPlist.xcstrings` と主要な非View文字列のローカライズ対応を追加 |
 
 ## 次にやること
 
@@ -24,6 +25,7 @@ Status keys: `Todo`, `Doing`, `Blocked`, `Done`.
 | Todo | QA | 手動回帰チェックリストを実行する | なぜ中核ループを保証できるチェックなのか？ | 下の Manual QA Checklist の must 項目が pass/fail 記録済み |
 | Todo | Reviewer | 初回リリース範囲をリスク観点でレビューする | なぜ各機能が学習フローを壊しうるのか？ | must/should/later の境界に反対意見または承認がある |
 | Todo | Release Manager | リリース準備チェックリストを実行する | なぜ実ユーザーへ出せる状態か？ | 下の Release Checklist に owner と status が入っている |
+| Todo | Designer | 英語表示の文脈レビューを行う | なぜ翻訳後も低圧な学習再開支援として伝わるのか？ | English locale で Home / Library / Add Video / Study Feed / Settings / Live Activity の主要文言を確認し、違和感があれば修正候補を出す |
 
 ## 初回リリース Scope
 
@@ -107,4 +109,3 @@ Status keys: `Todo`, `Doing`, `Blocked`, `Done`.
 - Notifications: なぜこの通知は親切で、しつこくないのか？
 - Live Activity: なぜアプリ外に復帰導線を出す必要があるのか？
 - Analytics: なぜこのイベントがプロダクト判断に必要なのか？
-

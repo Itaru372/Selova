@@ -159,8 +159,11 @@ struct VideoNotesEditor: View {
     }
 
     private var currentTimestampLabel: String {
-        guard let currentTime else { return "現在位置を挿入" }
-        return "\(VideoTimestampFormatter.string(from: currentTime)) を挿入"
+        guard let currentTime else { return String(localized: "現在位置を挿入") }
+        return String(
+            localized: "\(VideoTimestampFormatter.string(from: currentTime)) を挿入",
+            comment: "Button label for inserting current video timestamp."
+        )
     }
 
     private func insertCurrentTimestamp() {
@@ -171,11 +174,11 @@ struct VideoNotesEditor: View {
 
     private func addManualTimestamp() {
         guard let seconds = VideoTimestampFormatter.seconds(from: manualTimestampText) else {
-            timestampError = "タイムスタンプは 20:15 または 1:05:30 の形で入力してください"
+            timestampError = String(localized: "タイムスタンプは 20:15 または 1:05:30 の形で入力してください")
             return
         }
         if video.duration > 0 && seconds > video.duration {
-            timestampError = "動画の長さを超えない位置を入力してください"
+            timestampError = String(localized: "動画の長さを超えない位置を入力してください")
             return
         }
 
@@ -194,7 +197,7 @@ struct VideoNotesEditor: View {
             try modelContext.save()
         } catch {
             modelContext.delete(note)
-            timestampError = "メモを保存できませんでした。もう一度試してください"
+            timestampError = String(localized: "メモを保存できませんでした。もう一度試してください")
             print("Failed to save video note: \(error)")
             return
         }
@@ -211,14 +214,14 @@ struct VideoNotesEditor: View {
             try modelContext.save()
             timestampError = nil
         } catch {
-            timestampError = "メモを削除できませんでした。もう一度試してください"
+            timestampError = String(localized: "メモを削除できませんでした。もう一度試してください")
             print("Failed to delete video note: \(error)")
         }
     }
 
     private func noteText(for note: VideoNote) -> String {
         let trimmed = note.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "メモなし" : trimmed
+        return trimmed.isEmpty ? String(localized: "メモなし") : trimmed
     }
 }
 
